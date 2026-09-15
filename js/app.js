@@ -1,0 +1,542 @@
+/* ==========================================================================
+   APP.JS — Dakar Dapper Main Application
+   ========================================================================== */
+
+/* ── STATE ─────────────────────────────────────────────────────────── */
+let cart = [];
+let wishlist = [];
+let activeFilter = "all";
+let currentModal = null;
+let galleryIndex = 0;
+let waOpen = false;
+
+/* ── INIT ──────────────────────────────────────────────────────────── */
+document.addEventListener("DOMContentLoaded", () => {
+  renderProducts();
+  bindHeader();
+  bindFilters();
+  bindDrawers();
+  bindSearch();
+  bindWhatsApp();
+  bindModalClose();
+});
+
+/* ── PRODUCTS RENDERING ────────────────────────────────────────────── */
+function renderProducts(filter, query) {
+  const f = filter || activeFilter;
+  const grid = document.getElementById("product-grid");
+  let items = PRODUCTS;
+
+  if (f === "new") items = items.filter(p => p.isNew);
+  else if (f !== "all") items = items.filter(p => p.category === f);
+
+  if (query) {
+    const q = query.toLowerCase();
+    items = items.filter(p =>
+      p.name.toLowerCase().includes(q) ||
+      p.subtitle.toLowerCase().includes(q) ||
+      p.category.toLowerCase().includes(q) ||
+      (p.badge && p.badge.toLowerCase().includes(q))
+    );
+  }
+
+  if (!items.length) {
+    grid.innerHTML = `<div class="empty-state"><h3>No products found</h3><p>Try a different filter or search term.</p><button class="btn btn-dark" onclick="filterProducts('all')">View All</button></div>`;
+    return;
+  }
+
+  grid.innerHTML = items.map(p => {
+    const disc = p.originalPrice ? Math.round((1 - p.price / p.originalPrice) * 100) : 0;
+    const inWish = wishlist.includes(p.id);
+    return `
+    <div class="p-card" data-id="${p.id}">
+      <div class="p-card-media">
+        ${p.badge ? `<div class="p-badge"><span class="${p.badgeType}">${p.badge}</span></div>` : ""}
+        <button class="heart-btn${inWish ? " active" : ""}" onclick="event.stopPropagation();toggleWish(${p.id})" aria-label="Wishlist">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="${inWish ? '#fff' : 'none'}" stroke="${inWish ? '#fff' : 'currentColor'}" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        </button>
+        <img class="img-main" src="${p.image}" alt="${p.name}" loading="lazy">
+        <div class="p-actions">
+          <button class="p-action-btn view" onclick="event.stopPropagation();openProduct(${p.id})">Quick View</button>
+          <button class="p-action-btn add" onclick="event.stopPropagation();addToCart(${p.id})">+ Bag</button>
+        </div>
+      </div>
+      <div class="p-info" onclick="openProduct(${p.id})">
+        <div class="p-info-top">
+          <span class="p-cat">${p.category}</span>
+          <span class="p-rating">★ ${p.rating}</span>
+        </div>
+        <h3 class="p-name">${p.name}</h3>
+        <p class="p-sub">${p.subtitle}</p>
+        <div class="p-colors">${p.colors.slice(0, 3).map(c => `<span class="p-swatch" style="background:${c}"></span>`).join("")}</div>
+        <div class="p-prices">
+          <span class="p-price">${formatPrice(p.price)}</span>
+          ${p.originalPrice ? `<span class="p-orig">${formatPrice(p.originalPrice)}</span><span class="p-disc">-${disc}%</span>` : ""}
+        </div>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+/* ── FILTERS ───────────────────────────────────────────────────────── */
+function bindFilters() {
+  document.getElementById("filter-bar").addEventListener("click", e => {
+    const btn = e.target.closest(".filter-btn");
+    if (!btn) return;
+    filterProducts(btn.dataset.filter);
+  });
+}
+
+function filterProducts(f) {
+  activeFilter = f;
+  document.querySelectorAll(".filter-btn").forEach(b => b.classList.toggle("active", b.dataset.filter === f));
+  renderProducts(f);
+}
+
+/* ── HEADER ────────────────────────────────────────────────────────── */
+function bindHeader() {
+  const header = document.getElementById("header");
+  window.addEventListener("scroll", () => {
+    header.classList.toggle("scrolled", window.scrollY > 40);
+  });
+  // Hamburger
+  document.getElementById("hamburger").addEventListener("click", () => {
+    document.getElementById("mobile-drawer").classList.add("open");
+    document.getElementById("overlay").classList.add("active");
+    document.body.classList.add("no-scroll");
+  });
+  document.getElementById("mobile-close").addEventListener("click", closeAllDrawers);
+  // Mobile nav links
+  document.querySelectorAll(".mob-link").forEach(a => {
+    a.addEventListener("click", () => closeAllDrawers());
+  });
+}
+
+/* ── DRAWERS ───────────────────────────────────────────────────────── */
+function bindDrawers() {
+  document.getElementById("cart-toggle").addEventListener("click", () => openDrawer("cart-drawer"));
+  document.getElementById("cart-close").addEventListener("click", closeAllDrawers);
+  document.getElementById("wishlist-toggle").addEventListener("click", () => openDrawer("wish-drawer"));
+  document.getElementById("wish-close").addEventListener("click", closeAllDrawers);
+  document.getElementById("overlay").addEventListener("click", closeAllDrawers);
+  document.getElementById("checkout-btn").addEventListener("click", openCheckout);
+}
+
+function openDrawer(id) {
+  closeAllDrawers();
+  document.getElementById(id).classList.add("open");
+  document.getElementById("overlay").classList.add("active");
+  document.body.classList.add("no-scroll");
+}
+
+function closeAllDrawers() {
+  document.querySelectorAll(".drawer, .mobile-drawer").forEach(d => d.classList.remove("open"));
+  document.getElementById("overlay").classList.remove("active");
+  document.getElementById("search-overlay").classList.remove("open");
+  document.body.classList.remove("no-scroll");
+}
+
+/* ── CART ───────────────────────────────────────────────────────────── */
+function addToCart(id, size, color, qty) {
+  const p = PRODUCTS.find(x => x.id === id);
+  if (!p) return;
+  const s = size || p.sizes[0];
+  const c = color || p.colorNames[0];
+  const q = qty || 1;
+  const existing = cart.find(i => i.id === id && i.size === s && i.color === c);
+  if (existing) existing.qty += q;
+  else cart.push({ id, size: s, color: c, qty: q });
+  renderCart();
+  showToast(`${p.name} added to bag`);
+}
+
+function removeFromCart(idx) {
+  cart.splice(idx, 1);
+  renderCart();
+}
+
+function updateQty(idx, delta) {
+  cart[idx].qty += delta;
+  if (cart[idx].qty < 1) cart.splice(idx, 1);
+  renderCart();
+}
+
+function renderCart() {
+  const container = document.getElementById("cart-items");
+  const footer = document.getElementById("cart-footer");
+  const badge = document.getElementById("cart-count");
+  const totalItems = cart.reduce((s, i) => s + i.qty, 0);
+  badge.textContent = totalItems;
+  badge.style.display = totalItems > 0 ? "flex" : "none";
+
+  if (!cart.length) {
+    container.innerHTML = `<div class="empty-state"><h3>Your bag is empty</h3><p>Explore our collection and find something you love.</p><button class="btn btn-dark" onclick="closeAllDrawers();scrollToSection('collection')">Browse Collection</button></div>`;
+    footer.style.display = "none";
+    return;
+  }
+
+  let total = 0;
+  container.innerHTML = cart.map((item, i) => {
+    const p = PRODUCTS.find(x => x.id === item.id);
+    const lineTotal = p.price * item.qty;
+    total += lineTotal;
+    return `
+    <div class="cart-item">
+      <div class="cart-item-img"><img src="${p.image}" alt="${p.name}"></div>
+      <div class="cart-item-body">
+        <div class="cart-item-top"><span class="cat">${p.category}</span><button class="cart-item-del" onclick="removeFromCart(${i})">✕</button></div>
+        <h4>${p.name}</h4>
+        <span class="cart-item-meta">${item.size} · ${item.color}</span>
+        <div class="cart-item-bot">
+          <div class="qty"><button onclick="updateQty(${i},-1)">−</button><span>${item.qty}</span><button onclick="updateQty(${i},1)">+</button></div>
+          <span class="cart-item-price">${formatPrice(lineTotal)}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join("");
+
+  footer.style.display = "block";
+  document.getElementById("cart-total").textContent = formatPrice(total);
+
+  // Shipping meter
+  const thresh = 150000;
+  const pct = Math.min(total / thresh * 100, 100);
+  document.getElementById("ship-fill").style.width = pct + "%";
+  document.getElementById("ship-fill").classList.toggle("done", total >= thresh);
+  document.getElementById("ship-msg").textContent = total >= thresh ? "🎉 You qualify for free shipping!" : `Add ${formatPrice(thresh - total)} for free shipping`;
+}
+
+/* ── WISHLIST ──────────────────────────────────────────────────────── */
+function toggleWish(id) {
+  const i = wishlist.indexOf(id);
+  if (i >= 0) wishlist.splice(i, 1);
+  else wishlist.push(id);
+  renderProducts();
+  renderWishlist();
+  const p = PRODUCTS.find(x => x.id === id);
+  if (i < 0) showToast(`${p.name} saved to wishlist`);
+}
+
+function renderWishlist() {
+  const container = document.getElementById("wish-items");
+  const badge = document.getElementById("wish-count");
+  badge.textContent = wishlist.length;
+  badge.style.display = wishlist.length > 0 ? "flex" : "none";
+
+  if (!wishlist.length) {
+    container.innerHTML = `<div class="empty-state"><h3>No saved items</h3><p>Heart products you love to save them here.</p></div>`;
+    return;
+  }
+
+  container.innerHTML = wishlist.map(id => {
+    const p = PRODUCTS.find(x => x.id === id);
+    return `
+    <div class="wish-item">
+      <div class="wish-item-img" onclick="closeAllDrawers();openProduct(${p.id})"><img src="${p.image}" alt="${p.name}"></div>
+      <div class="wish-item-info">
+        <h4 onclick="closeAllDrawers();openProduct(${p.id})">${p.name}</h4>
+        <div class="wish-item-price">${formatPrice(p.price)}</div>
+        <div class="wish-item-actions">
+          <button class="btn btn-sm btn-dark" onclick="addToCart(${p.id});toggleWish(${p.id})">Add to Bag</button>
+          <button class="wish-remove" onclick="toggleWish(${p.id})">Remove</button>
+        </div>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+/* ── PRODUCT MODAL ─────────────────────────────────────────────────── */
+function openProduct(id) {
+  const p = PRODUCTS.find(x => x.id === id);
+  if (!p) return;
+  currentModal = p;
+  galleryIndex = 0;
+
+  // Gallery
+  document.getElementById("modal-img").src = p.image;
+  document.getElementById("modal-thumbs").innerHTML = `<div class="modal-thumb active" onclick="setGallery(0)"><img src="${p.image}" alt=""></div>`;
+
+  // Info
+  const disc = p.originalPrice ? Math.round((1 - p.price / p.originalPrice) * 100) : 0;
+  const inWish = wishlist.includes(p.id);
+  const starsStr = "★".repeat(Math.floor(p.rating)) + (p.rating % 1 >= .5 ? "½" : "");
+
+  document.getElementById("modal-info").innerHTML = `
+    <div class="modal-tags">
+      <span class="t-light">${p.category}</span>
+      ${p.badge ? `<span class="t-dark">${p.badge}</span>` : ""}
+    </div>
+    <h2 class="modal-title">${p.name}</h2>
+    <p class="modal-subtitle">${p.subtitle}</p>
+    <div class="modal-stars">
+      <span class="stars">${starsStr}</span>
+      <span>${p.rating} (${p.reviews} reviews)</span>
+      <span class="in-stock">• In Stock</span>
+    </div>
+    <div class="modal-price-row">
+      <span class="modal-price">${formatPrice(p.price)}</span>
+      ${p.originalPrice ? `<span class="modal-strike">${formatPrice(p.originalPrice)}</span><span class="p-disc">-${disc}%</span>` : ""}
+    </div>
+    <p class="modal-desc">${p.description}</p>
+    <div class="select-group">
+      <div class="select-label">Color — <span id="sel-color-name">${p.colorNames[0]}</span></div>
+      <div class="color-opts">${p.colors.map((c, i) => `<div class="color-opt${i === 0 ? ' active' : ''}" onclick="selectColor(this,${i})" data-index="${i}"><span class="color-dot" style="background:${c}"></span></div>`).join("")}</div>
+    </div>
+    <div class="select-group">
+      <div class="select-label">Size <button class="size-guide-btn" onclick="openSizeGuide()">📏 Size Guide</button></div>
+      <div class="size-opts">${p.sizes.map((s, i) => `<button class="size-opt${i === 0 ? ' active' : ''}" onclick="selectSize(this)">${s}</button>`).join("")}</div>
+    </div>
+    <div class="modal-actions">
+      <div class="qty qty-lg"><button onclick="modalQty(-1)">−</button><span id="modal-qty">1</span><button onclick="modalQty(1)">+</button></div>
+      <button class="btn btn-dark" onclick="addModalToCart()">Add to Bag</button>
+      <button class="wish-circle${inWish ? ' active' : ''}" onclick="toggleWish(${p.id});refreshModalWish(${p.id})">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="${inWish ? '#fff' : 'none'}" stroke="${inWish ? '#fff' : 'currentColor'}" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+      </button>
+    </div>
+    <button class="btn btn-gold buy-full" onclick="addModalToCart();closeModal();openDrawer('cart-drawer')">Buy Now</button>
+    <div class="reassure">
+      <div class="reassure-row"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><div><strong>Secure Checkout</strong><span>SSL encrypted payment</span></div></div>
+      <div class="reassure-row"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 17H5a2 2 0 0 0-2 2 2 2 0 0 0 2 2h14a2 2 0 0 0 2-2 2 2 0 0 0-2-2h-4M9 17V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v12M9 17h6"/></svg><div><strong>Free Shipping</strong><span>On orders over ₦150,000</span></div></div>
+      <div class="reassure-row"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg><div><strong>Easy Returns</strong><span>14-day hassle-free returns</span></div></div>
+    </div>
+  `;
+
+  // Tabs
+  document.getElementById("tabs-section").innerHTML = `
+    <div class="tabs-nav">
+      <button class="tab-btn active" onclick="switchTab('details',this)">Details</button>
+      <button class="tab-btn" onclick="switchTab('care',this)">Care</button>
+      <button class="tab-btn" onclick="switchTab('shipping',this)">Shipping</button>
+    </div>
+    <div class="tab-pane active" id="tab-details">
+      <ul class="detail-list">${p.details.map(d => `<li><span class="check">✓</span>${d}</li>`).join("")}</ul>
+    </div>
+    <div class="tab-pane" id="tab-care"><p style="font-size:.9rem;color:var(--text-sub);line-height:1.6">${p.care}</p></div>
+    <div class="tab-pane" id="tab-shipping"><p style="font-size:.9rem;color:var(--text-sub);line-height:1.6">Free standard shipping on orders over ₦150,000. Standard delivery takes 3-5 business days within Lagos and 5-7 days nationwide. Express delivery available at checkout. All orders are tracked and insured.</p></div>
+  `;
+
+  // Related
+  const related = PRODUCTS.filter(x => x.id !== p.id && x.category === p.category).slice(0, 3);
+  if (related.length) {
+    document.getElementById("related-section").innerHTML = `
+      <h3>You May Also Like</h3>
+      <div class="related-grid">${related.map(r => `
+        <div class="related-item" onclick="openProduct(${r.id})">
+          <div class="related-img"><img src="${r.image}" alt="${r.name}"></div>
+          <div><h4>${r.name}</h4><span class="price">${formatPrice(r.price)}</span></div>
+        </div>`).join("")}</div>`;
+  } else {
+    document.getElementById("related-section").innerHTML = "";
+  }
+
+  // Show
+  const modal = document.getElementById("product-modal");
+  modal.classList.add("open");
+  document.body.classList.add("no-scroll");
+}
+
+function closeModal() {
+  document.getElementById("product-modal").classList.remove("open");
+  document.body.classList.remove("no-scroll");
+  currentModal = null;
+}
+
+function bindModalClose() {
+  document.getElementById("modal-close").addEventListener("click", closeModal);
+  document.getElementById("product-modal").addEventListener("click", e => {
+    if (e.target.id === "product-modal") closeModal();
+  });
+  // Size guide
+  document.getElementById("size-modal").addEventListener("click", e => {
+    if (e.target.id === "size-modal") closeSizeGuide();
+  });
+  // Checkout modal
+  document.getElementById("checkout-modal").addEventListener("click", e => {
+    if (e.target.id === "checkout-modal") closeCheckout();
+  });
+}
+
+function setGallery(i) {
+  galleryIndex = i;
+  document.getElementById("modal-img").src = currentModal.image;
+  document.querySelectorAll(".modal-thumb").forEach((t, idx) => t.classList.toggle("active", idx === i));
+}
+
+function selectColor(el, i) {
+  document.querySelectorAll(".color-opt").forEach(o => o.classList.remove("active"));
+  el.classList.add("active");
+  document.getElementById("sel-color-name").textContent = currentModal.colorNames[i];
+}
+
+function selectSize(el) {
+  document.querySelectorAll(".size-opt").forEach(o => o.classList.remove("active"));
+  el.classList.add("active");
+}
+
+function modalQty(delta) {
+  const el = document.getElementById("modal-qty");
+  let v = parseInt(el.textContent) + delta;
+  if (v < 1) v = 1;
+  if (v > 10) v = 10;
+  el.textContent = v;
+}
+
+function addModalToCart() {
+  if (!currentModal) return;
+  const size = document.querySelector(".size-opt.active")?.textContent || currentModal.sizes[0];
+  const colorIdx = document.querySelector(".color-opt.active")?.dataset.index || 0;
+  const color = currentModal.colorNames[colorIdx];
+  const qty = parseInt(document.getElementById("modal-qty").textContent);
+  addToCart(currentModal.id, size, color, qty);
+}
+
+function refreshModalWish(id) {
+  const inWish = wishlist.includes(id);
+  const btn = document.querySelector(".wish-circle");
+  if (btn) {
+    btn.classList.toggle("active", inWish);
+    btn.querySelector("svg").setAttribute("fill", inWish ? "#fff" : "none");
+    btn.querySelector("svg").setAttribute("stroke", inWish ? "#fff" : "currentColor");
+  }
+}
+
+function switchTab(name, btn) {
+  document.querySelectorAll(".tab-btn").forEach(t => t.classList.remove("active"));
+  document.querySelectorAll(".tab-pane").forEach(p => p.classList.remove("active"));
+  btn.classList.add("active");
+  document.getElementById("tab-" + name).classList.add("active");
+}
+
+function openSizeGuide() { document.getElementById("size-modal").classList.add("open"); }
+function closeSizeGuide() { document.getElementById("size-modal").classList.remove("open"); }
+
+/* ── CHECKOUT ──────────────────────────────────────────────────────── */
+function openCheckout() {
+  closeAllDrawers();
+  const total = cart.reduce((s, item) => {
+    const p = PRODUCTS.find(x => x.id === item.id);
+    return s + p.price * item.qty;
+  }, 0);
+  document.getElementById("checkout-total").textContent = formatPrice(total);
+  document.getElementById("checkout-content").querySelector(".form-grid").style.display = "flex";
+  const orderDone = document.querySelector(".order-done");
+  if (orderDone) orderDone.remove();
+  document.getElementById("checkout-modal").classList.add("open");
+  document.body.classList.add("no-scroll");
+}
+
+function closeCheckout() {
+  document.getElementById("checkout-modal").classList.remove("open");
+  document.body.classList.remove("no-scroll");
+}
+
+function placeOrder() {
+  const card = document.getElementById("checkout-content");
+  card.innerHTML = `
+    <div class="order-done">
+      <div class="check-circle">✓</div>
+      <h2 style="font-family:var(--font-serif);font-size:1.6rem;margin-bottom:8px">Order Confirmed!</h2>
+      <p style="color:var(--text-sub);margin-bottom:20px">Thank you for shopping with Dakar Dapper. We'll send you a confirmation email and WhatsApp message shortly.</p>
+      <button class="btn btn-dark" onclick="closeCheckout();cart=[];renderCart()">Continue Shopping</button>
+    </div>`;
+  showToast("Order placed successfully! 🎉");
+}
+
+/* ── SEARCH ────────────────────────────────────────────────────────── */
+function bindSearch() {
+  document.getElementById("search-toggle").addEventListener("click", () => {
+    document.getElementById("search-overlay").classList.add("open");
+    document.getElementById("search-input").focus();
+  });
+  document.getElementById("search-close").addEventListener("click", () => {
+    document.getElementById("search-overlay").classList.remove("open");
+    document.getElementById("search-input").value = "";
+    renderProducts();
+  });
+  document.getElementById("search-input").addEventListener("input", e => {
+    renderProducts("all", e.target.value);
+  });
+  document.querySelectorAll(".search-tag").forEach(tag => {
+    tag.addEventListener("click", () => {
+      document.getElementById("search-input").value = tag.dataset.q;
+      renderProducts("all", tag.dataset.q);
+    });
+  });
+}
+
+/* ── WHATSAPP ──────────────────────────────────────────────────────── */
+function bindWhatsApp() {
+  const btn = document.getElementById("wa-btn");
+  const popup = document.getElementById("wa-popup");
+  const close = document.getElementById("wa-close");
+
+  btn.addEventListener("click", () => {
+    waOpen = !waOpen;
+    popup.classList.toggle("open", waOpen);
+  });
+  close.addEventListener("click", () => {
+    waOpen = false;
+    popup.classList.remove("open");
+  });
+  // Chips
+  document.querySelectorAll(".wa-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      const msg = chip.dataset.msg;
+      window.open(`https://wa.me/${PHONE}?text=${encodeURIComponent(msg)}`, "_blank");
+    });
+  });
+  // Send
+  document.getElementById("wa-send").addEventListener("click", sendWaMsg);
+  document.getElementById("wa-msg").addEventListener("keypress", e => {
+    if (e.key === "Enter") sendWaMsg();
+  });
+}
+
+function sendWaMsg() {
+  const input = document.getElementById("wa-msg");
+  const msg = input.value.trim();
+  if (!msg) return;
+  window.open(`https://wa.me/${PHONE}?text=${encodeURIComponent(msg)}`, "_blank");
+  input.value = "";
+}
+
+/* ── NEWSLETTER ────────────────────────────────────────────────────── */
+function handleNewsletter(e) {
+  e.preventDefault();
+  const form = e.target;
+  const email = form.querySelector("input").value;
+  if (email) {
+    showToast("Welcome to the family! 💌");
+    form.reset();
+  }
+  return false;
+}
+
+/* ── TOAST ──────────────────────────────────────────────────────────── */
+function showToast(msg) {
+  const box = document.getElementById("toast-box");
+  const toast = document.createElement("div");
+  toast.className = "toast";
+  toast.innerHTML = `<span class="toast-icon">✦</span>${msg}`;
+  box.appendChild(toast);
+  requestAnimationFrame(() => toast.classList.add("show"));
+  setTimeout(() => {
+    toast.classList.remove("show");
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+}
+
+/* ── SCROLL ────────────────────────────────────────────────────────── */
+function scrollToSection(id) {
+  const el = document.getElementById(id);
+  if (el) el.scrollIntoView({ behavior: "smooth" });
+  closeAllDrawers();
+}
+
+/* ── LOGO SCROLL TO TOP ───────────────────────────────────────────── */
+document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("logo-link").addEventListener("click", e => {
+    e.preventDefault();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+});
