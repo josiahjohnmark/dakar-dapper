@@ -848,28 +848,22 @@ function openNewsletterModal(type = "preshop") {
   const badge = document.getElementById("nl-modal-badge");
   const title = document.getElementById("nl-modal-title");
   const desc = document.getElementById("nl-modal-desc");
-  const perk = document.getElementById("nl-modal-perk");
   const btn = document.getElementById("nl-modal-btn");
-  const dismiss = document.getElementById("nl-modal-dismiss");
   const emailInput = document.getElementById("nl-modal-email");
 
   if (type === "postshop") {
-    if (badge) badge.textContent = "VIP ACCESS · INNER CIRCLE";
-    if (title) title.textContent = "Thank You for Your Order!";
-    if (desc) desc.textContent = "You're now eligible for Dakar Dapper VIP Inner Circle membership. Enjoy secret drops, private sales, and an exclusive discount on your next order.";
-    if (perk) perk.innerHTML = "<span>👑</span> VIP Perk: Extra 10% Off Next Order";
-    if (btn) btn.textContent = "CLAIM VIP MEMBERSHIP";
-    if (dismiss) dismiss.textContent = "No thanks, continue browsing";
+    if (badge) badge.textContent = "STAY IN STYLE";
+    if (title) title.textContent = "Thank You for Shopping!";
+    if (desc) desc.textContent = "Get exclusive access to new collections, private drops and styling tips from our Dakar Dapper team.";
+    if (btn) btn.textContent = "SUBSCRIBE";
     if (emailInput && userEmailFromCheckout) {
       emailInput.value = userEmailFromCheckout;
     }
   } else {
     if (badge) badge.textContent = "STAY IN STYLE";
     if (title) title.textContent = "Be the First to Know";
-    if (desc) desc.textContent = "Get exclusive access to new streetwear drops, private sales and styling tips from our Dakar Dapper team.";
-    if (perk) perk.innerHTML = "<span>✦</span> 10% Off Your First Order";
-    if (btn) btn.textContent = "SUBSCRIBE & GET 10% OFF";
-    if (dismiss) dismiss.textContent = "No thanks, I'll pay full price";
+    if (desc) desc.textContent = "Get exclusive access to new collections, private sales and styling tips from our team.";
+    if (btn) btn.textContent = "SUBSCRIBE";
     if (emailInput) emailInput.value = "";
   }
 
@@ -899,11 +893,7 @@ function handleModalNewsletter(e) {
   localStorage.setItem("dd_subscribed", "true");
   sessionStorage.setItem("dd_preshop_popup_shown", "true");
 
-  if (currentNlModalType === "postshop") {
-    showToast("VIP membership activated! Welcome to the Inner Circle 👑");
-  } else {
-    showToast("Welcome to Dakar Dapper! Check your inbox for code: DAPPER10 🎁");
-  }
+  showToast("Welcome to the Dakar Dapper family! 💌");
 
   closeNewsletterModal();
   if (emailInput) emailInput.value = "";

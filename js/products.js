@@ -438,8 +438,8 @@ const PRODUCTS = [
 ];
 
 // WhatsApp Concierge phone number (Official WhatsApp wa.me format)
-const PHONE = "2347033223491";
-const PHONE_DISPLAY = "07033223491";
+const PHONE = "2349019603621";
+const PHONE_DISPLAY = "09019603621";
 
 function formatPrice(n) {
   return "₦" + n.toLocaleString("en-NG");
