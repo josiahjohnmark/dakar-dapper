@@ -67,15 +67,6 @@ ul{list-style:none}
 .btn-icon{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;padding:0;position:relative;color:var(--text);transition:all .2s var(--ease)}
 .btn-icon:hover{background:rgba(0,0,0,.05)}
 
-/* ── Top Banner ───────────────────────────────────────────────────── */
-.top-bar{
-  background:var(--bg-dark);color:var(--text-white);
-  font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;
-  padding:9px 0;text-align:center;font-weight:500;
-}
-.top-bar span{opacity:.7}
-.top-bar strong{color:var(--gold);margin:0 4px}
-
 /* ── Header ───────────────────────────────────────────────────────── */
 .header{
   position:sticky;top:0;z-index:100;
