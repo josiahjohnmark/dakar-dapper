@@ -6,6 +6,7 @@
   <title>Shop — Dakar Dapper | Premium Men's Wears & Accessories</title>
   <meta name="description" content="Browse the full Dakar Dapper collection. Premium blazers, trousers, leather goods, watches and more — luxury menswear delivered across Nigeria.">
   <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/admin.css">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16x16.png">
@@ -119,21 +120,23 @@
 
         <div class="sidebar-group">
           <h4>Categories</h4>
-          <button class="sidebar-link active" data-filter="all" onclick="shopFilter('all',this)">
-            All Products <span class="count" id="count-all">16</span>
-          </button>
-          <button class="sidebar-link" data-filter="wears" onclick="shopFilter('wears',this)">
-            Wears <span class="count" id="count-wears">7</span>
-          </button>
-          <button class="sidebar-link" data-filter="accessories" onclick="shopFilter('accessories',this)">
-            Accessories <span class="count" id="count-accessories">5</span>
-          </button>
-          <button class="sidebar-link" data-filter="footwear" onclick="shopFilter('footwear',this)">
-            Footwear <span class="count" id="count-footwear">3</span>
-          </button>
-          <button class="sidebar-link" data-filter="new" onclick="shopFilter('new',this)">
-            New Arrivals <span class="count" id="count-new">8</span>
-          </button>
+          <div id="shop-category-list">
+            <button class="sidebar-link active" data-filter="all" onclick="shopFilter('all',this)">
+              All Products <span class="count" id="count-all">16</span>
+            </button>
+            <button class="sidebar-link" data-filter="wears" onclick="shopFilter('wears',this)">
+              Wears <span class="count" id="count-wears">7</span>
+            </button>
+            <button class="sidebar-link" data-filter="accessories" onclick="shopFilter('accessories',this)">
+              Accessories <span class="count" id="count-accessories">5</span>
+            </button>
+            <button class="sidebar-link" data-filter="footwear" onclick="shopFilter('footwear',this)">
+              Footwear <span class="count" id="count-footwear">3</span>
+            </button>
+            <button class="sidebar-link" data-filter="new" onclick="shopFilter('new',this)">
+              New Arrivals <span class="count" id="count-new">8</span>
+            </button>
+          </div>
         </div>
 
         <div class="sidebar-group">
@@ -430,5 +433,6 @@
 <script src="js/products.js"></script>
 <script src="js/app.js"></script>
 <script src="js/shop.js"></script>
+<script src="js/admin.js"></script>
 </body>
 </html>

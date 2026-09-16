@@ -25,13 +25,11 @@ document.addEventListener("DOMContentLoaded", () => {
   // Check URL params for deep-linking
   const params = new URLSearchParams(window.location.search);
   const cat = params.get("cat");
-  if (cat && ["wears", "accessories", "footwear", "new"].includes(cat)) {
+  if (cat) {
     shopCategory = cat;
-    document.querySelectorAll(".sidebar-link[data-filter]").forEach(link => {
-      link.classList.toggle("active", link.dataset.filter === cat);
-    });
   }
 
+  renderShopCategories();
   updateCounts();
   renderShop();
 });
@@ -160,6 +158,7 @@ function closeShopSidebar() {
 
 /* ── RENDER SHOP & PAGINATION ──────────────────────────────────────── */
 function renderShop() {
+  renderShopCategories();
   let items = [...PRODUCTS];
 
   // 1. Category filter
@@ -215,14 +214,8 @@ function renderShop() {
   const pageItems = items.slice(startIndex, endIndex);
 
   // Update Page Title and Counter
-  const titles = {
-    all: "All Products",
-    wears: "Wears",
-    accessories: "Accessories",
-    footwear: "Footwear",
-    new: "New Arrivals"
-  };
-  const categoryTitle = titles[shopCategory] || "All Products";
+  const foundCat = (typeof CATEGORIES !== "undefined") ? CATEGORIES.find(c => c.id === shopCategory) : null;
+  const categoryTitle = shopCategory === "all" ? "All Products" : (shopCategory === "new" ? "New Arrivals" : (foundCat ? foundCat.name : shopCategory.charAt(0).toUpperCase() + shopCategory.slice(1)));
   const titleEl = document.getElementById("shop-page-title");
   const breadcrumbEl = document.getElementById("breadcrumb-current");
   const countEl = document.getElementById("shop-product-count");
@@ -259,19 +252,29 @@ function renderShop() {
   }
 
   grid.innerHTML = pageItems.map(p => {
-    const disc = p.originalPrice ? Math.round((1 - p.price / p.originalPrice) * 100) : 0;
+    const isSoldOut = p.isOutOfStock || (p.stock !== undefined && p.stock <= 0);
+    const disc = p.originalPrice && p.showDiscount !== false && p.originalPrice > p.price
+      ? Math.round((1 - p.price / p.originalPrice) * 100) : 0;
     const inWish = wishlist.includes(p.id);
+    const badgeHtml = isSoldOut
+      ? `<div class="p-badge"><span class="badge-sold-out">Sold Out</span></div>`
+      : (p.badge ? `<div class="p-badge"><span class="${p.badgeType || 'tag-gold'}">${p.badge}</span></div>` : "");
+
+    const addBtnHtml = isSoldOut
+      ? `<button class="p-action-btn add sold-out-btn" disabled>Sold Out</button>`
+      : `<button class="p-action-btn add" onclick="event.stopPropagation();addToCart(${p.id})">+ Bag</button>`;
+
     return `
-    <div class="p-card" data-id="${p.id}" onclick="openProduct(${p.id})">
+    <div class="p-card${isSoldOut ? ' is-sold-out' : ''}" data-id="${p.id}" onclick="openProduct(${p.id})">
       <div class="p-card-media">
-        ${p.badge ? `<div class="p-badge"><span class="${p.badgeType}">${p.badge}</span></div>` : ""}
+        ${badgeHtml}
         <button class="heart-btn${inWish ? " active" : ""}" onclick="event.stopPropagation();toggleWish(${p.id});renderShop()" aria-label="Wishlist">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="${inWish ? '#fff' : 'none'}" stroke="${inWish ? '#fff' : 'currentColor'}" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
         </button>
         <img class="img-main" src="${p.image}" alt="${p.name}" loading="lazy">
         <div class="p-actions">
           <button class="p-action-btn view" onclick="event.stopPropagation();openProduct(${p.id})">Quick View</button>
-          <button class="p-action-btn add" onclick="event.stopPropagation();addToCart(${p.id})">+ Bag</button>
+          ${addBtnHtml}
         </div>
       </div>
       <div class="p-info">
@@ -280,11 +283,11 @@ function renderShop() {
           <span class="p-rating">★ ${p.rating}</span>
         </div>
         <h3 class="p-name">${p.name}</h3>
-        <p class="p-sub">${p.subtitle}</p>
+        <p class="p-sub">${p.subtitle || ""}</p>
         <div class="p-colors">${(p.colors || []).slice(0, 3).map(c => `<span class="p-swatch" style="background:${c}"></span>`).join("")}</div>
         <div class="p-prices">
           <span class="p-price">${formatPrice(p.price)}</span>
-          ${p.originalPrice ? `<span class="p-orig">${formatPrice(p.originalPrice)}</span><span class="p-disc">-${disc}%</span>` : ""}
+          ${disc ? `<span class="p-orig">${formatPrice(p.originalPrice)}</span><span class="p-disc">-${disc}%</span>` : ""}
         </div>
       </div>
     </div>`;
@@ -305,8 +308,9 @@ function renderActiveFilters() {
   const pills = [];
 
   if (shopCategory !== "all") {
-    const catLabels = { wears: "Wears", accessories: "Accessories", footwear: "Footwear", new: "New Arrivals" };
-    pills.push({ type: "category", label: `Category: ${catLabels[shopCategory] || shopCategory}` });
+    const foundCat = (typeof CATEGORIES !== "undefined") ? CATEGORIES.find(c => c.id === shopCategory) : null;
+    const catName = shopCategory === "new" ? "New Arrivals" : (foundCat ? foundCat.name : shopCategory.charAt(0).toUpperCase() + shopCategory.slice(1));
+    pills.push({ type: "category", label: `Category: ${catName}` });
   }
   if (shopPriceRange !== "all") {
     const priceLabels = {
@@ -418,14 +422,52 @@ function renderPagination(totalPages, activePage) {
 /* ── COUNTS ────────────────────────────────────────────────────────── */
 function updateCounts() {
   const countAll = document.getElementById("count-all");
-  const countWears = document.getElementById("count-wears");
-  const countAccessories = document.getElementById("count-accessories");
-  const countFootwear = document.getElementById("count-footwear");
   const countNew = document.getElementById("count-new");
 
   if (countAll) countAll.textContent = PRODUCTS.length;
-  if (countWears) countWears.textContent = PRODUCTS.filter(p => p.category === "wears").length;
-  if (countAccessories) countAccessories.textContent = PRODUCTS.filter(p => p.category === "accessories").length;
-  if (countFootwear) countFootwear.textContent = PRODUCTS.filter(p => p.category === "footwear").length;
   if (countNew) countNew.textContent = PRODUCTS.filter(p => p.isNew).length;
+
+  if (typeof CATEGORIES !== "undefined") {
+    CATEGORIES.forEach(c => {
+      const el = document.getElementById(`count-${c.id}`);
+      if (el) el.textContent = PRODUCTS.filter(p => p.category === c.id).length;
+    });
+  }
 }
+
+/* ── DYNAMIC SIDEBAR CATEGORIES ────────────────────────────────────── */
+function renderShopCategories() {
+  const container = document.getElementById("shop-category-list");
+  if (!container) return;
+
+  const cats = (typeof CATEGORIES !== "undefined" && CATEGORIES.length) ? CATEGORIES : [
+    { id: "wears", name: "Wears" },
+    { id: "accessories", name: "Accessories" },
+    { id: "footwear", name: "Footwear" }
+  ];
+
+  let html = `
+    <button class="sidebar-link${shopCategory === 'all' ? ' active' : ''}" data-filter="all" onclick="shopFilter('all',this)">
+      All Products <span class="count" id="count-all">${PRODUCTS.length}</span>
+    </button>
+  `;
+
+  cats.forEach(c => {
+    const count = PRODUCTS.filter(p => p.category === c.id).length;
+    html += `
+      <button class="sidebar-link${shopCategory === c.id ? ' active' : ''}" data-filter="${c.id}" onclick="shopFilter('${c.id}',this)">
+        ${c.name} <span class="count" id="count-${c.id}">${count}</span>
+      </button>
+    `;
+  });
+
+  const newCount = PRODUCTS.filter(p => p.isNew).length;
+  html += `
+    <button class="sidebar-link${shopCategory === 'new' ? ' active' : ''}" data-filter="new" onclick="shopFilter('new',this)">
+      New Arrivals <span class="count" id="count-new">${newCount}</span>
+    </button>
+  `;
+
+  container.innerHTML = html;
+}
+

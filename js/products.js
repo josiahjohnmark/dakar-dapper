@@ -3,7 +3,7 @@
    Curated Luxury Streetwear, Men's Fashion & Accessories
    ========================================================================== */
 
-const PRODUCTS = [
+const DEFAULT_PRODUCTS = [
   {
     id: 1,
     name: "Metanoia Oversized Heavyweight Tee",
@@ -437,10 +437,105 @@ const PRODUCTS = [
   }
 ];
 
-// WhatsApp Concierge phone number (Official WhatsApp wa.me format)
-const PHONE = "2349019603621";
-const PHONE_DISPLAY = "09019603621";
+// ── DEFAULT CATEGORIES ──────────────────────────────────────────────
+const DEFAULT_CATEGORIES = [
+  { id: "wears", name: "Wears" },
+  { id: "accessories", name: "Accessories" },
+  { id: "footwear", name: "Footwear" }
+];
+
+// ── DEFAULT EDITABLE SITE CONTENT ───────────────────────────────────
+const DEFAULT_CONTENT = {
+  heroBadge: "NEW DROP // SENEGALESE HERITAGE // OVERSIZED FIT",
+  heroTitle: "The Art of Dressing Well",
+  heroDesc: "We tell you how the best pieces can look and feel. Curated luxury menswear and universally admired dapper silhouettes made in Senegal, Dakar. Located in the Mainland Lagos and delivering beyond borders.",
+  heroBtn1Text: "SHOP COLLECTION",
+  heroBtn1Link: "shop.html",
+  heroBtn2Text: "OUR STORY",
+  heroBtn2Link: "#editorial",
+  bannerNotice: "✦ FREE EXPRESS DELIVERY ON ORDERS OVER ₦150,000 WITHIN LAGOS ✦",
+  storyBadge: "EDITORIAL",
+  storyTitle: "Modern Lagos Streetwear, Reimagined",
+  storyDesc: "Dakar Dapper was born at the vibrant intersection of West African textile craftsmanship and global contemporary streetwear. Each piece in our limited-batch collections is intentionally engineered for modern tastemakers — combining rich cultural roots, relaxed tailoring, and premium materials designed to age with distinction.",
+  quoteText: "“Clothing is the silent introduction to who you are. Dakar Dapper crafts that first impression with uncompromising poise.”",
+  quoteAuthor: "Creative Director, Dakar Dapper",
+  phone: "2349019603621",
+  phoneDisplay: "09019603621",
+  popupDelaySec: 30
+};
+
+// ── STORAGE ACCESSORS ───────────────────────────────────────────────
+function getStoredProducts() {
+  try {
+    const raw = localStorage.getItem("dd_products_data");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length) return parsed;
+    }
+  } catch (e) {
+    console.error("Error reading stored products:", e);
+  }
+  return DEFAULT_PRODUCTS.map(p => ({
+    ...p,
+    stock: p.stock !== undefined ? p.stock : 10,
+    showDiscount: p.showDiscount !== undefined ? p.showDiscount : true,
+    isOutOfStock: p.isOutOfStock !== undefined ? p.isOutOfStock : false
+  }));
+}
+
+function saveStoredProducts(products) {
+  try {
+    localStorage.setItem("dd_products_data", JSON.stringify(products));
+    PRODUCTS = products;
+  } catch (e) {
+    console.error("Error saving products:", e);
+  }
+}
+
+function getStoredCategories() {
+  try {
+    const raw = localStorage.getItem("dd_categories_data");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length) return parsed;
+    }
+  } catch (e) {}
+  return [...DEFAULT_CATEGORIES];
+}
+
+function saveStoredCategories(cats) {
+  try {
+    localStorage.setItem("dd_categories_data", JSON.stringify(cats));
+    CATEGORIES = cats;
+  } catch (e) {}
+}
+
+function getStoredContent() {
+  try {
+    const raw = localStorage.getItem("dd_site_content");
+    if (raw) {
+      return { ...DEFAULT_CONTENT, ...JSON.parse(raw) };
+    }
+  } catch (e) {}
+  return { ...DEFAULT_CONTENT };
+}
+
+function saveStoredContent(content) {
+  try {
+    localStorage.setItem("dd_site_content", JSON.stringify(content));
+    SITE_CONTENT = content;
+    PHONE = content.phone || "2349019603621";
+    PHONE_DISPLAY = content.phoneDisplay || "09019603621";
+  } catch (e) {}
+}
+
+// ── ACTIVE APPLICATION STATE ─────────────────────────────────────────
+let PRODUCTS = getStoredProducts();
+let CATEGORIES = getStoredCategories();
+let SITE_CONTENT = getStoredContent();
+let PHONE = SITE_CONTENT.phone || "2349019603621";
+let PHONE_DISPLAY = SITE_CONTENT.phoneDisplay || "09019603621";
 
 function formatPrice(n) {
-  return "₦" + n.toLocaleString("en-NG");
+  return "₦" + Number(n || 0).toLocaleString("en-NG");
 }

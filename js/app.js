@@ -16,6 +16,8 @@ let userEmailFromCheckout = "";
 
 /* ── INIT ──────────────────────────────────────────────────────────── */
 document.addEventListener("DOMContentLoaded", () => {
+  hydratePageContent();
+  renderCategoryFilters();
   renderProducts();
   bindHeader();
   bindFilters();
@@ -170,18 +172,20 @@ function renderProducts(filter, query) {
 
   grid.innerHTML = items.map(p => {
     const disc = p.originalPrice ? Math.round((1 - p.price / p.originalPrice) * 100) : 0;
+    const hasDisc = (p.showDiscount !== false) && p.originalPrice && disc > 0;
+    const isSoldOut = p.isOutOfStock || (p.stock !== undefined && p.stock <= 0);
     const inWish = wishlist.includes(p.id);
     return `
-    <div class="p-card" data-id="${p.id}" onclick="openProduct(${p.id})">
+    <div class="p-card${isSoldOut ? ' is-sold-out' : ''}" data-id="${p.id}" onclick="openProduct(${p.id})">
       <div class="p-card-media">
-        ${p.badge ? `<div class="p-badge"><span class="${p.badgeType}">${p.badge}</span></div>` : ""}
+        ${isSoldOut ? `<div class="p-badge"><span class="badge-sold-out">SOLD OUT</span></div>` : (p.badge ? `<div class="p-badge"><span class="${p.badgeType}">${p.badge}</span></div>` : "")}
         <button class="heart-btn${inWish ? " active" : ""}" onclick="event.stopPropagation();toggleWish(${p.id})" aria-label="Wishlist">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="${inWish ? '#fff' : 'none'}" stroke="${inWish ? '#fff' : 'currentColor'}" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
         </button>
         <img class="img-main" src="${p.image}" alt="${p.name}" loading="lazy">
         <div class="p-actions">
           <button class="p-action-btn view" onclick="event.stopPropagation();openProduct(${p.id})">Quick View</button>
-          <button class="p-action-btn add" onclick="event.stopPropagation();addToCart(${p.id})">+ Bag</button>
+          <button class="p-action-btn add" onclick="event.stopPropagation();${isSoldOut ? '' : `addToCart(${p.id})`}"${isSoldOut ? ' disabled style="opacity:0.6;cursor:not-allowed"' : ''}>${isSoldOut ? 'Sold Out' : '+ Bag'}</button>
         </div>
       </div>
       <div class="p-info">
@@ -191,10 +195,10 @@ function renderProducts(filter, query) {
         </div>
         <h3 class="p-name">${p.name}</h3>
         <p class="p-sub">${p.subtitle}</p>
-        <div class="p-colors">${p.colors.slice(0, 3).map(c => `<span class="p-swatch" style="background:${c}"></span>`).join("")}</div>
+        <div class="p-colors">${(p.colors || []).slice(0, 3).map(c => `<span class="p-swatch" style="background:${c}"></span>`).join("")}</div>
         <div class="p-prices">
           <span class="p-price">${formatPrice(p.price)}</span>
-          ${p.originalPrice ? `<span class="p-orig">${formatPrice(p.originalPrice)}</span><span class="p-disc">-${disc}%</span>` : ""}
+          ${hasDisc ? `<span class="p-orig">${formatPrice(p.originalPrice)}</span><span class="p-disc">-${disc}%</span>` : ""}
         </div>
       </div>
     </div>`;
@@ -273,8 +277,13 @@ function closeAllDrawers() {
 function addToCart(id, size, color, qty) {
   const p = PRODUCTS.find(x => x.id === id);
   if (!p) return;
-  const s = size || p.sizes[0];
-  const c = color || p.colorNames[0];
+  const isSoldOut = p.isOutOfStock || (p.stock !== undefined && p.stock <= 0);
+  if (isSoldOut) {
+    showToast(`${p.name} is currently out of stock`);
+    return;
+  }
+  const s = size || (p.sizes && p.sizes[0]) || "Standard";
+  const c = color || (p.colorNames && p.colorNames[0]) || "Default";
   const q = qty || 1;
   const existing = cart.find(i => i.id === id && i.size === s && i.color === c);
   if (existing) existing.qty += q;
@@ -398,42 +407,44 @@ function openProduct(id) {
 
   // Info
   const disc = p.originalPrice ? Math.round((1 - p.price / p.originalPrice) * 100) : 0;
+  const hasDisc = (p.showDiscount !== false) && p.originalPrice && disc > 0;
   const inWish = wishlist.includes(p.id);
-  const starsStr = "★".repeat(Math.floor(p.rating)) + (p.rating % 1 >= .5 ? "½" : "");
+  const isSoldOut = p.isOutOfStock || (p.stock !== undefined && p.stock <= 0);
+  const starsStr = "★".repeat(Math.floor(p.rating || 5)) + ((p.rating || 5) % 1 >= .5 ? "½" : "");
 
   document.getElementById("modal-info").innerHTML = `
     <div class="modal-tags">
       <span class="t-light">${p.category}</span>
-      ${p.badge ? `<span class="t-dark">${p.badge}</span>` : ""}
+      ${isSoldOut ? `<span class="badge-sold-out">SOLD OUT</span>` : (p.badge ? `<span class="t-dark">${p.badge}</span>` : "")}
     </div>
     <h2 class="modal-title">${p.name}</h2>
     <p class="modal-subtitle">${p.subtitle}</p>
     <div class="modal-stars">
       <span class="stars">${starsStr}</span>
-      <span>${p.rating} (${p.reviews} reviews)</span>
-      <span class="in-stock">• In Stock</span>
+      <span>${p.rating || 5.0} (${p.reviews || 1} reviews)</span>
+      <span class="${isSoldOut ? 'out-of-stock' : 'in-stock'}" style="${isSoldOut ? 'color:#ef4444;font-weight:600' : ''}">• ${isSoldOut ? 'Sold Out' : 'In Stock'}</span>
     </div>
     <div class="modal-price-row">
       <span class="modal-price">${formatPrice(p.price)}</span>
-      ${p.originalPrice ? `<span class="modal-strike">${formatPrice(p.originalPrice)}</span><span class="p-disc">-${disc}%</span>` : ""}
+      ${hasDisc ? `<span class="modal-strike">${formatPrice(p.originalPrice)}</span><span class="p-disc">-${disc}%</span>` : ""}
     </div>
     <p class="modal-desc">${p.description}</p>
     <div class="select-group">
-      <div class="select-label">Color — <span id="sel-color-name">${p.colorNames[0]}</span></div>
-      <div class="color-opts">${p.colors.map((c, i) => `<div class="color-opt${i === 0 ? ' active' : ''}" onclick="selectColor(this,${i})" data-index="${i}"><span class="color-dot" style="background:${c}"></span></div>`).join("")}</div>
+      <div class="select-label">Color — <span id="sel-color-name">${(p.colorNames && p.colorNames[0]) || 'Standard'}</span></div>
+      <div class="color-opts">${(p.colors || ['#111']).map((c, i) => `<div class="color-opt${i === 0 ? ' active' : ''}" onclick="selectColor(this,${i})" data-index="${i}"><span class="color-dot" style="background:${c}"></span></div>`).join("")}</div>
     </div>
     <div class="select-group">
       <div class="select-label">Size <button class="size-guide-btn" onclick="openSizeGuide()">📏 Size Guide</button></div>
-      <div class="size-opts">${p.sizes.map((s, i) => `<button class="size-opt${i === 0 ? ' active' : ''}" onclick="selectSize(this)">${s}</button>`).join("")}</div>
+      <div class="size-opts">${(p.sizes || ['One Size']).map((s, i) => `<button class="size-opt${i === 0 ? ' active' : ''}" onclick="selectSize(this)">${s}</button>`).join("")}</div>
     </div>
     <div class="modal-actions">
       <div class="qty qty-lg"><button onclick="modalQty(-1)">−</button><span id="modal-qty">1</span><button onclick="modalQty(1)">+</button></div>
-      <button class="btn btn-dark" onclick="addModalToCart()">Add to Bag</button>
+      <button class="btn btn-dark" onclick="${isSoldOut ? '' : 'addModalToCart()'}"${isSoldOut ? ' disabled style="opacity:0.6;cursor:not-allowed"' : ''}>${isSoldOut ? 'Sold Out' : 'Add to Bag'}</button>
       <button class="wish-circle${inWish ? ' active' : ''}" onclick="toggleWish(${p.id});refreshModalWish(${p.id})">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="${inWish ? '#fff' : 'none'}" stroke="${inWish ? '#fff' : 'currentColor'}" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
       </button>
     </div>
-    <button class="btn btn-gold buy-full" onclick="addModalToCart();closeModal();openDrawer('cart-drawer')">Buy Now</button>
+    <button class="btn btn-gold buy-full" onclick="${isSoldOut ? '' : "addModalToCart();closeModal();openDrawer('cart-drawer')"}"${isSoldOut ? ' disabled style="opacity:0.6;cursor:not-allowed"' : ''}>${isSoldOut ? 'Sold Out' : 'Buy Now'}</button>
     <div class="reassure">
       <div class="reassure-row"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><div><strong>Secure Checkout</strong><span>SSL encrypted payment</span></div></div>
       <div class="reassure-row"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 17H5a2 2 0 0 0-2 2 2 2 0 0 0 2 2h14a2 2 0 0 0 2-2 2 2 0 0 0-2-2h-4M9 17V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v12M9 17h6"/></svg><div><strong>Free Shipping</strong><span>On orders over ₦150,000</span></div></div>
@@ -611,6 +622,23 @@ function placeOrder() {
   if (emailField && emailField.value) {
     userEmailFromCheckout = emailField.value.trim();
   }
+
+  // Deduct private inventory stock for purchased items
+  cart.forEach(item => {
+    const p = PRODUCTS.find(x => x.id === item.id);
+    if (p) {
+      const currentStock = (p.stock !== undefined) ? p.stock : 10;
+      p.stock = Math.max(0, currentStock - item.qty);
+      if (p.stock <= 0) {
+        p.isOutOfStock = true;
+      }
+    }
+  });
+  if (typeof saveStoredProducts === "function") {
+    saveStoredProducts(PRODUCTS);
+  }
+  if (typeof renderProducts === "function") renderProducts();
+  if (typeof renderShop === "function") renderShop();
 
   const card = document.getElementById("checkout-content");
   card.innerHTML = `
@@ -815,11 +843,12 @@ function initNewsletterTriggers() {
     }
   }, { passive: true });
 
-  // 2. Browsing timer: popup appears after user has worked through website (~1 min / 60s)
+  // 2. Browsing timer: popup appears after user has worked through website (~30 seconds)
+  const delaySec = (typeof SITE_CONTENT !== "undefined" && SITE_CONTENT.popupDelaySec) ? SITE_CONTENT.popupDelaySec : 30;
   setTimeout(() => {
     preShopTimerPassed = true;
     checkPreShopPopup();
-  }, 60000);
+  }, delaySec * 1000);
 }
 
 function checkPreShopPopup() {
@@ -935,3 +964,64 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 });
+
+/* ── DYNAMIC CATEGORY FILTERS ──────────────────────────────────────── */
+function renderCategoryFilters() {
+  const bar = document.getElementById("filter-bar");
+  if (!bar) return;
+  const cats = (typeof CATEGORIES !== "undefined" && CATEGORIES.length) ? CATEGORIES : [
+    { id: "wears", name: "Wears" },
+    { id: "accessories", name: "Accessories" },
+    { id: "footwear", name: "Footwear" }
+  ];
+
+  bar.innerHTML = `
+    <button class="filter-btn${activeFilter === 'all' ? ' active' : ''}" data-filter="all">All</button>
+    ${cats.map(c => `<button class="filter-btn${activeFilter === c.id ? ' active' : ''}" data-filter="${c.id}">${c.name}</button>`).join("")}
+    <button class="filter-btn${activeFilter === 'new' ? ' active' : ''}" data-filter="new">New Arrivals</button>
+  `;
+}
+
+/* ── CMS PAGE CONTENT HYDRATION ────────────────────────────────────── */
+function hydratePageContent() {
+  if (typeof SITE_CONTENT === "undefined") return;
+  const c = SITE_CONTENT;
+
+  // Hero badge
+  const heroBadge = document.querySelector(".hero-badge");
+  if (heroBadge && c.heroBadge) heroBadge.textContent = c.heroBadge;
+
+  // Hero Title (preserve italic or HTML if provided)
+  const heroTitle = document.querySelector(".hero-title");
+  if (heroTitle && c.heroTitle) {
+    if (c.heroTitle.includes("<")) heroTitle.innerHTML = c.heroTitle;
+    else heroTitle.textContent = c.heroTitle;
+  }
+
+  // Hero Description
+  const heroDesc = document.querySelector(".hero-desc");
+  if (heroDesc && c.heroDesc) heroDesc.textContent = c.heroDesc;
+
+  // Hero Buttons
+  const heroBtns = document.querySelectorAll(".hero-btns .btn");
+  if (heroBtns.length >= 1 && c.heroBtn1Text) heroBtns[0].textContent = c.heroBtn1Text;
+  if (heroBtns.length >= 2 && c.heroBtn2Text) heroBtns[1].textContent = c.heroBtn2Text;
+
+  // Editorial Story
+  const kicker = document.querySelector(".editorial-kicker");
+  if (kicker && c.storyKicker) kicker.textContent = c.storyKicker;
+
+  const storyTitle = document.querySelector(".editorial-title");
+  if (storyTitle && c.storyTitle) {
+    if (c.storyTitle.includes("<")) storyTitle.innerHTML = c.storyTitle;
+    else storyTitle.textContent = c.storyTitle;
+  }
+
+  const storyDesc = document.querySelector(".editorial-desc");
+  if (storyDesc && c.storyDesc) storyDesc.textContent = c.storyDesc;
+
+  // Top Notice Bar (if present)
+  const notice = document.querySelector(".top-notice-bar");
+  if (notice && c.bannerNotice) notice.textContent = c.bannerNotice;
+}
+
