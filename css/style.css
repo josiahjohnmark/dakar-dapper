@@ -830,8 +830,6 @@ ul{list-style:none}
   .editorial-card{grid-template-columns:1fr}
   .editorial-media{min-height:280px}
   .footer-grid{grid-template-columns:1fr}
-  .hero{min-height:70vh}
-  .hero-title{font-size:clamp(2rem,8vw,3.2rem)}
   .section-header{flex-direction:column;align-items:flex-start;gap:8px}
   .modal-gallery{flex-direction:column-reverse}
   .modal-thumbs{flex-direction:row;width:100%;overflow-x:auto}
@@ -839,7 +837,42 @@ ul{list-style:none}
   .tabs-nav{overflow-x:auto;gap:18px}
   .tab-btn{white-space:nowrap;font-size:.8rem}
   .wa-container{bottom:18px;right:18px}
-  
+
+  /* ── Mobile Logo ── */
+  .logo{gap:8px}
+  .logo-img{height:34px;width:34px;padding:1px}
+  .logo-name{font-size:1rem;letter-spacing:.06em}
+  .logo-tag{font-size:.5rem;letter-spacing:.14em;margin-top:0}
+  .logo-text{justify-content:center}
+  .header-inner{padding:10px clamp(12px,3vw,24px)}
+
+  /* ── Mobile Hero ── */
+  .hero{min-height:75vh}
+  .hero-content{
+    padding:0 20px;
+    display:flex;flex-direction:column;justify-content:center;
+    max-width:100%;
+  }
+  .hero-badge{
+    font-size:.6rem;letter-spacing:.16em;margin-bottom:14px;
+    display:inline-flex;align-items:center;gap:6px;
+  }
+  .hero-badge::before{width:20px}
+  .hero-title{
+    font-size:clamp(2rem,9vw,3rem);
+    margin-bottom:14px;line-height:1.1;
+  }
+  .hero-desc{
+    font-size:.88rem;line-height:1.65;margin-bottom:24px;
+    max-width:100%;
+  }
+  .hero-btns{
+    display:flex;flex-direction:row;gap:10px;flex-wrap:wrap;
+  }
+  .hero-btns .btn{
+    font-size:.72rem;padding:11px 22px;
+  }
+
   .btn-filter-mobile{display:inline-flex}
   .shop-layout{grid-template-columns:1fr}
   .shop-sidebar{
@@ -858,8 +891,26 @@ ul{list-style:none}
   .p-name{font-size:.82rem}
   .p-sub{display:none}
   .p-actions{flex-direction:column;gap:4px}
-  .hero-btns{flex-direction:column;gap:10px}
   .newsletter form{flex-direction:column}
   .form-row{grid-template-columns:1fr}
   .shop-product-grid{gap:10px}
+
+  /* ── Small Mobile Logo ── */
+  .logo-img{height:30px;width:30px}
+  .logo-name{font-size:.88rem}
+  .logo-tag{font-size:.46rem;letter-spacing:.12em}
+  .header-actions .btn-icon{width:36px;height:36px}
+  .header-actions .btn-icon svg{width:17px;height:17px}
+
+  /* ── Small Mobile Hero ── */
+  .hero{min-height:70vh}
+  .hero-content{padding:0 16px}
+  .hero-badge{font-size:.55rem;margin-bottom:10px}
+  .hero-title{font-size:clamp(1.7rem,8vw,2.4rem);margin-bottom:10px}
+  .hero-desc{font-size:.82rem;line-height:1.6;margin-bottom:20px}
+  .hero-btns{flex-direction:column;gap:8px}
+  .hero-btns .btn{
+    font-size:.7rem;padding:12px 24px;text-align:center;
+    width:100%;justify-content:center;
+  }
 }
