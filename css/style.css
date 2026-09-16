@@ -625,6 +625,98 @@ ul{list-style:none}
 .toast.show{transform:translateY(0);opacity:1}
 .toast-icon{color:var(--gold);flex-shrink:0}
 
+/* ── Newsletter VIP Modal ─────────────────────────────────────────── */
+.nl-modal .modal-card{
+  max-width:480px;
+  background:radial-gradient(circle at 50% 0%, rgba(184,150,90,.16) 0%, #141414 70%);
+  color:#fff;
+  border:1px solid rgba(184,150,90,.32);
+  padding:clamp(28px,5vw,44px);
+  text-align:center;
+  box-shadow:0 24px 70px rgba(0,0,0,.7), 0 0 40px rgba(184,150,90,.14);
+  position:relative;
+  border-radius:var(--r-lg);
+}
+.nl-modal .modal-x{
+  top:16px;
+  right:16px;
+  width:34px;
+  height:34px;
+  font-size:1rem;
+  background:rgba(255,255,255,.08);
+  color:#fff;
+  border:none;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  transition:all .2s;
+}
+.nl-modal .modal-x:hover{
+  background:var(--gold);
+  color:var(--bg-dark);
+}
+.nl-modal-icon{
+  width:52px;height:52px;margin:0 auto 14px;
+  border-radius:50%;background:rgba(255,255,255,.06);
+  border:1px solid rgba(184,150,90,.3);
+  display:flex;align-items:center;justify-content:center;
+  padding:4px;
+}
+.nl-modal-icon img{width:100%;height:100%;object-fit:contain;border-radius:50%}
+.nl-badge{
+  display:inline-block;
+  font-size:.72rem;font-weight:700;
+  letter-spacing:.2em;text-transform:uppercase;
+  margin-bottom:8px;
+}
+.nl-title{
+  font-size:clamp(1.7rem,3vw,2.3rem);
+  font-weight:500;line-height:1.15;
+  margin-bottom:10px;
+  color:#fff;
+}
+.nl-desc{
+  font-size:.86rem;
+  color:rgba(255,255,255,.68);
+  line-height:1.6;
+  max-width:380px;
+  margin:0 auto 18px;
+}
+.nl-perk{
+  display:inline-flex;align-items:center;gap:6px;
+  background:rgba(184,150,90,.12);
+  border:1px dashed rgba(184,150,90,.4);
+  padding:6px 14px;border-radius:var(--r-full);
+  font-size:.74rem;font-weight:600;color:var(--gold-light);
+  margin-bottom:20px;
+}
+.nl-form{
+  display:flex;flex-direction:column;gap:10px;
+  max-width:380px;margin:0 auto;
+}
+.nl-form input{
+  width:100%;padding:13px 18px;border-radius:var(--r-full);
+  border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);
+  color:#fff;font-size:.88rem;outline:none;text-align:center;
+  transition:border-color .2s, background .2s;
+}
+.nl-form input:focus{
+  border-color:var(--gold);
+  background:rgba(255,255,255,.1);
+}
+.nl-form input::placeholder{color:rgba(255,255,255,.4)}
+.nl-submit{
+  width:100%;padding:13px 24px;font-size:.82rem;letter-spacing:.08em;
+  font-weight:700;
+}
+.nl-dismiss{
+  margin-top:14px;font-size:.74rem;color:rgba(255,255,255,.45);
+  cursor:pointer;background:none;border:none;text-decoration:underline;
+  text-underline-offset:2px;transition:color .2s;
+}
+.nl-dismiss:hover{color:#fff}
+
 /* ── Auth Modal ───────────────────────────────────────────────────── */
 .auth-modal .modal-card{
   max-width:440px;padding:clamp(28px,5vw,44px);

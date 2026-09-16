@@ -9,6 +9,10 @@ let activeFilter = "all";
 let currentModal = null;
 let galleryIndex = 0;
 let waOpen = false;
+let preShopTimerPassed = false;
+let hasViewedCollections = false;
+let currentNlModalType = "preshop";
+let userEmailFromCheckout = "";
 
 /* ── INIT ──────────────────────────────────────────────────────────── */
 document.addEventListener("DOMContentLoaded", () => {
@@ -24,6 +28,7 @@ document.addEventListener("DOMContentLoaded", () => {
   bindCardReveal();
   renderCart();
   renderWishlist();
+  initNewsletterTriggers();
 });
 
 /* ── PERSIST ───────────────────────────────────────────────────────── */
@@ -214,6 +219,8 @@ function filterProducts(f) {
   activeFilter = f;
   document.querySelectorAll(".filter-btn").forEach(b => b.classList.toggle("active", b.dataset.filter === f));
   renderProducts(f);
+  hasViewedCollections = true;
+  checkPreShopPopup();
 }
 
 /* ── HEADER ────────────────────────────────────────────────────────── */
@@ -383,6 +390,7 @@ function openProduct(id) {
   if (!p) return;
   currentModal = p;
   galleryIndex = 0;
+  hasViewedCollections = true;
 
   // Gallery
   document.getElementById("modal-img").src = p.image;
@@ -471,6 +479,7 @@ function closeModal() {
   document.getElementById("product-modal").classList.remove("open");
   document.body.classList.remove("no-scroll");
   currentModal = null;
+  setTimeout(checkPreShopPopup, 900);
 }
 
 function bindModalClose() {
@@ -493,11 +502,19 @@ function bindModalClose() {
       if (e.target.id === "auth-modal") closeAuth();
     });
   }
+  // Newsletter VIP modal
+  const nlModal = document.getElementById("newsletter-modal");
+  if (nlModal) {
+    nlModal.addEventListener("click", e => {
+      if (e.target.id === "newsletter-modal") closeNewsletterModal();
+    });
+  }
 
   // Escape key closes all modals
   document.addEventListener("keydown", e => {
     if (e.key === "Escape") {
-      if (document.getElementById("product-modal").classList.contains("open")) closeModal();
+      if (document.getElementById("newsletter-modal")?.classList.contains("open")) closeNewsletterModal();
+      else if (document.getElementById("product-modal").classList.contains("open")) closeModal();
       else if (document.getElementById("auth-modal")?.classList.contains("open")) closeAuth();
       else if (document.getElementById("size-modal").classList.contains("open")) closeSizeGuide();
       else if (document.getElementById("checkout-modal").classList.contains("open")) closeCheckout();
@@ -576,20 +593,44 @@ function openCheckout() {
 }
 
 function closeCheckout() {
+  const wasOrderDone = document.querySelector(".order-done");
   document.getElementById("checkout-modal").classList.remove("open");
   document.body.classList.remove("no-scroll");
+  if (wasOrderDone) {
+    cart = [];
+    saveCart();
+    renderCart();
+    setTimeout(() => {
+      openNewsletterModal("postshop");
+    }, 450);
+  }
 }
 
 function placeOrder() {
+  const emailField = document.querySelector("#checkout-content input[type='email']");
+  if (emailField && emailField.value) {
+    userEmailFromCheckout = emailField.value.trim();
+  }
+
   const card = document.getElementById("checkout-content");
   card.innerHTML = `
     <div class="order-done">
       <div class="check-circle">✓</div>
       <h2 style="font-family:var(--font-serif);font-size:1.6rem;margin-bottom:8px">Order Confirmed!</h2>
       <p style="color:var(--text-sub);margin-bottom:20px">Thank you for shopping with Dakar Dapper. We'll send you a confirmation email and WhatsApp message shortly.</p>
-      <button class="btn btn-dark" onclick="closeCheckout();cart=[];saveCart();renderCart()">Continue Shopping</button>
+      <button class="btn btn-dark" onclick="handleOrderDoneContinue()">Continue Shopping</button>
     </div>`;
   showToast("Order placed successfully! 🎉");
+}
+
+function handleOrderDoneContinue() {
+  closeCheckout();
+  cart = [];
+  saveCart();
+  renderCart();
+  setTimeout(() => {
+    openNewsletterModal("postshop");
+  }, 450);
 }
 
 /* ── AUTH MODAL ─────────────────────────────────────────────────────── */
@@ -718,17 +759,159 @@ function sendWaMsg() {
   input.value = "";
 }
 
-/* ── NEWSLETTER ────────────────────────────────────────────────────── */
+/* ── NEWSLETTER (FOOTER & VIP MODAL) ──────────────────────────────── */
 function handleNewsletter(e) {
   e.preventDefault();
   const form = e.target;
   const email = form.querySelector("input").value;
   if (email) {
-    showToast("Welcome to the family! 💌");
+    localStorage.setItem("dd_subscribed", "true");
+    sessionStorage.setItem("dd_preshop_popup_shown", "true");
+    showToast("Welcome to the Dakar Dapper family! 💌");
     form.reset();
   }
   return false;
 }
+
+function initNewsletterTriggers() {
+  // If user is directly on the shop page, they are already exploring collections
+  if (window.location.pathname.includes("shop.html")) {
+    hasViewedCollections = true;
+  }
+
+  // 1. Observe when user scrolls into and browses the collection sections
+  const collectionTargets = [
+    document.getElementById("collection"),
+    document.getElementById("product-grid"),
+    document.querySelector(".categories"),
+    document.querySelector(".shop-layout"),
+    document.querySelector(".shop-product-grid")
+  ].filter(Boolean);
+
+  if (collectionTargets.length && "IntersectionObserver" in window) {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          hasViewedCollections = true;
+          checkPreShopPopup();
+        }
+      });
+    }, { threshold: 0.15 });
+
+    collectionTargets.forEach(el => observer.observe(el));
+  }
+
+  // Fallback scroll check (e.g. user scrolled past hero into collections)
+  window.addEventListener("scroll", () => {
+    if (window.scrollY > 400 && !hasViewedCollections) {
+      const coll = document.getElementById("collection") || document.getElementById("product-grid") || document.querySelector(".shop-layout");
+      if (coll) {
+        const rect = coll.getBoundingClientRect();
+        if (rect.top < window.innerHeight && rect.bottom > 0) {
+          hasViewedCollections = true;
+          checkPreShopPopup();
+        }
+      }
+    }
+  }, { passive: true });
+
+  // 2. Browsing timer: popup appears after user has worked through website (~1 min / 60s)
+  setTimeout(() => {
+    preShopTimerPassed = true;
+    checkPreShopPopup();
+  }, 60000);
+}
+
+function checkPreShopPopup() {
+  // User must satisfy BOTH conditions:
+  // 1. Worked through site for ~1 min (preShopTimerPassed)
+  // 2. Explored and checked the collections first (hasViewedCollections)
+  if (!preShopTimerPassed || !hasViewedCollections) return;
+
+  // Do not show if already subscribed or dismissed this browsing session
+  if (sessionStorage.getItem("dd_preshop_popup_shown")) return;
+  if (localStorage.getItem("dd_subscribed")) return;
+
+  // Do not interrupt active modals (product view, checkout, auth)
+  if (document.getElementById("product-modal")?.classList.contains("open")) return;
+  if (document.getElementById("checkout-modal")?.classList.contains("open")) return;
+  if (document.getElementById("auth-modal")?.classList.contains("open")) return;
+
+  openNewsletterModal("preshop");
+}
+
+function openNewsletterModal(type = "preshop") {
+  currentNlModalType = type;
+  const modal = document.getElementById("newsletter-modal");
+  if (!modal) return;
+
+  const badge = document.getElementById("nl-modal-badge");
+  const title = document.getElementById("nl-modal-title");
+  const desc = document.getElementById("nl-modal-desc");
+  const perk = document.getElementById("nl-modal-perk");
+  const btn = document.getElementById("nl-modal-btn");
+  const dismiss = document.getElementById("nl-modal-dismiss");
+  const emailInput = document.getElementById("nl-modal-email");
+
+  if (type === "postshop") {
+    if (badge) badge.textContent = "VIP ACCESS · INNER CIRCLE";
+    if (title) title.textContent = "Thank You for Your Order!";
+    if (desc) desc.textContent = "You're now eligible for Dakar Dapper VIP Inner Circle membership. Enjoy secret drops, private sales, and an exclusive discount on your next order.";
+    if (perk) perk.innerHTML = "<span>👑</span> VIP Perk: Extra 10% Off Next Order";
+    if (btn) btn.textContent = "CLAIM VIP MEMBERSHIP";
+    if (dismiss) dismiss.textContent = "No thanks, continue browsing";
+    if (emailInput && userEmailFromCheckout) {
+      emailInput.value = userEmailFromCheckout;
+    }
+  } else {
+    if (badge) badge.textContent = "STAY IN STYLE";
+    if (title) title.textContent = "Be the First to Know";
+    if (desc) desc.textContent = "Get exclusive access to new streetwear drops, private sales and styling tips from our Dakar Dapper team.";
+    if (perk) perk.innerHTML = "<span>✦</span> 10% Off Your First Order";
+    if (btn) btn.textContent = "SUBSCRIBE & GET 10% OFF";
+    if (dismiss) dismiss.textContent = "No thanks, I'll pay full price";
+    if (emailInput) emailInput.value = "";
+  }
+
+  modal.classList.add("open");
+  document.body.classList.add("no-scroll");
+
+  if (type === "preshop") {
+    sessionStorage.setItem("dd_preshop_popup_shown", "true");
+  }
+}
+
+function closeNewsletterModal() {
+  const modal = document.getElementById("newsletter-modal");
+  if (modal) modal.classList.remove("open");
+  document.body.classList.remove("no-scroll");
+  if (currentNlModalType === "preshop") {
+    sessionStorage.setItem("dd_preshop_popup_shown", "true");
+  }
+}
+
+function handleModalNewsletter(e) {
+  if (e && e.preventDefault) e.preventDefault();
+  const emailInput = document.getElementById("nl-modal-email");
+  const email = emailInput ? emailInput.value.trim() : "";
+  if (!email) return false;
+
+  localStorage.setItem("dd_subscribed", "true");
+  sessionStorage.setItem("dd_preshop_popup_shown", "true");
+
+  if (currentNlModalType === "postshop") {
+    showToast("VIP membership activated! Welcome to the Inner Circle 👑");
+  } else {
+    showToast("Welcome to Dakar Dapper! Check your inbox for code: DAPPER10 🎁");
+  }
+
+  closeNewsletterModal();
+  if (emailInput) emailInput.value = "";
+  return false;
+}
+
+// Global test hook for developer and UI verification
+window.testNewsletterModal = openNewsletterModal;
 
 /* ── TOAST ──────────────────────────────────────────────────────────── */
 function showToast(msg) {

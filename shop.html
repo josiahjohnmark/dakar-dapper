@@ -407,6 +407,27 @@
   </div>
 </div>
 
+<!-- ═══ Newsletter VIP Popup ═══ -->
+<div class="modal-wrap nl-modal" id="newsletter-modal">
+  <div class="modal-card nl-modal-card">
+    <button class="modal-x" id="nl-modal-close" onclick="closeNewsletterModal()" aria-label="Close">✕</button>
+    <div class="nl-modal-inner">
+      <div class="nl-modal-icon">
+        <img src="assets/dakar-dapper-dd.png" alt="Dakar Dapper" class="logo-img">
+      </div>
+      <span class="gold nl-badge" id="nl-modal-badge">STAY IN STYLE</span>
+      <h2 class="serif nl-title" id="nl-modal-title">Be the First to Know</h2>
+      <p class="nl-desc" id="nl-modal-desc">Get exclusive access to new collections, private sales and styling tips from our team.</p>
+      <div class="nl-perk" id="nl-modal-perk"><span>✦</span> 10% Off Your First Order</div>
+      <form class="nl-form" id="nl-modal-form" onsubmit="return handleModalNewsletter(event)">
+        <input type="email" id="nl-modal-email" placeholder="Your email address" required>
+        <button class="btn btn-gold nl-submit" id="nl-modal-btn" type="submit">SUBSCRIBE</button>
+      </form>
+      <button class="nl-dismiss" id="nl-modal-dismiss" onclick="closeNewsletterModal()" type="button">No thanks, I'll pay full price</button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ JavaScript ═══ -->
 <script src="js/products.js"></script>
 <script src="js/app.js"></script>
