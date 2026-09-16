@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dakar Dapper — Proper Men's Fashion Line</title>
-  <meta name="description" content="Discover luxury menswear and accessories by Dakar Dapper. Premium blazers, tailored trousers, leather goods and more.">
+  <title>Shop — Dakar Dapper | Premium Men's Wears & Accessories</title>
+  <meta name="description" content="Browse the full Dakar Dapper collection. Premium blazers, trousers, leather goods, watches and more — luxury menswear delivered across Nigeria.">
   <link rel="stylesheet" href="css/style.css">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png">
@@ -22,7 +22,7 @@
     <button class="hamburger" id="hamburger" aria-label="Open menu">
       <span></span><span></span><span></span>
     </button>
-    <a href="#" class="logo" id="logo-link">
+    <a href="index.html" class="logo" id="logo-link">
       <img src="assets/dakar-dapper-dd.png" alt="Dakar Dapper Logo" class="logo-img">
       <div class="logo-text">
         <span class="logo-name serif">DAKAR DAPPER</span>
@@ -30,10 +30,10 @@
       </div>
     </a>
     <nav class="nav-desktop" id="nav-desktop">
-      <a href="index.html" class="nav-link active" data-nav="home">Home</a>
-      <a href="shop.html" class="nav-link" data-nav="shop">Shop</a>
-      <a href="#editorial" class="nav-link" data-nav="editorial">Editorial</a>
-      <a href="#about" class="nav-link" data-nav="about">About</a>
+      <a href="index.html" class="nav-link" data-nav="home">Home</a>
+      <a href="shop.html" class="nav-link active" data-nav="shop">Shop</a>
+      <a href="index.html#editorial" class="nav-link" data-nav="editorial">Editorial</a>
+      <a href="index.html#about" class="nav-link" data-nav="about">About</a>
     </nav>
     <div class="header-actions">
       <button class="btn-icon" id="auth-toggle" aria-label="Account">
@@ -75,7 +75,7 @@
 <!-- ═══ Mobile Nav Drawer ═══ -->
 <div class="mobile-drawer" id="mobile-drawer">
   <div class="mobile-drawer-head">
-    <a href="#" class="logo">
+    <a href="index.html" class="logo">
       <img src="assets/dakar-dapper-dd.png" alt="Logo" class="logo-img">
       <div class="logo-text"><span class="logo-name serif">DAKAR DAPPER</span></div>
     </a>
@@ -84,9 +84,9 @@
   <div class="mobile-drawer-links">
     <a href="index.html" class="mob-link" data-nav="home">Home</a>
     <a href="shop.html" class="mob-link" data-nav="shop">Shop</a>
-    <a href="#editorial" class="mob-link" data-nav="editorial">Editorial</a>
-    <a href="#about" class="mob-link" data-nav="about">About</a>
-    <a href="#contact" class="mob-link" data-nav="contact">Contact</a>
+    <a href="index.html#editorial" class="mob-link" data-nav="editorial">Editorial</a>
+    <a href="index.html#about" class="mob-link" data-nav="about">About</a>
+    <a href="index.html#contact" class="mob-link" data-nav="contact">Contact</a>
     <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:6px">
       <a href="#" class="mob-link" onclick="event.preventDefault();closeAllDrawers();openAuth()" style="display:flex;align-items:center;gap:8px">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -102,129 +102,135 @@
 <!-- ═══ Overlay ═══ -->
 <div id="overlay"></div>
 
-<!-- ═══ Hero ═══ -->
-<section class="hero" id="home">
-  <div class="hero-bg"><img src="assets/hero.jpg" alt="Dakar Dapper Editorial"></div>
-  <div class="hero-overlay"></div>
-  <div class="hero-fade-out" id="hero-fade-out"></div>
-  <div class="hero-content">
-    <div class="hero-badge">Old Money. Premium Quality. Timeless Quality</div>
-    <h1 class="hero-title">The Art of<br><em>Dressing Well</em></h1>
-    <p class="hero-desc">We let you have the best pieces—our quality is uncompromised and universally admired. At Dakar Dapper. Located in the Mainland Lagos and serving beyond Borders.</p>
-    <div class="hero-btns">
-      <a href="shop.html" class="btn btn-outline-light">Shop Collection</a>
-      <a href="#editorial" class="btn btn-outline-light" onclick="scrollToSection('editorial')">Our Story</a>
-    </div>
-  </div>
-</section>
-
-<!-- ═══ Trust Strip ═══ -->
-<section class="trust">
+<!-- ═══ Shop Page Content ═══ -->
+<main class="shop-page">
   <div class="container">
-    <div class="trust-grid">
-      <div class="trust-item">
-        <div class="trust-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20"/></svg>
-        </div>
-        <div><strong>Secure Payment</strong><span>Encrypted transactions</span></div>
-      </div>
-      <div class="trust-item">
-        <div class="trust-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 17H5a2 2 0 0 0-2 2 2 2 0 0 0 2 2h14a2 2 0 0 0 2-2 2 2 0 0 0-2-2h-4M9 17V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v12M9 17h6"/></svg>
-        </div>
-        <div><strong>Free Delivery</strong><span>On orders over ₦150k</span></div>
-      </div>
-      <div class="trust-item">
-        <div class="trust-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 0 1-9 9m9-9a9 9 0 0 0-9-9m9 9H3m9 9a9 9 0 0 1-9-9m9 9c1.66 0 3-4.03 3-9s-1.34-9-3-9m0 18c-1.66 0-3-4.03-3-9s1.34-9 3-9m-9 9a9 9 0 0 1 9-9"/></svg>
-        </div>
-        <div><strong>Nationwide</strong><span>Ships across Nigeria</span></div>
-      </div>
-      <div class="trust-item">
-        <div class="trust-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m8 17 4 4 4-4"/></svg>
-        </div>
-        <div><strong>Easy Returns</strong><span>14-day return policy</span></div>
-      </div>
-    </div>
-  </div>
-</section>
+    <!-- Breadcrumb -->
+    <nav class="breadcrumb">
+      <a href="index.html">Home</a>
+      <span class="sep">/</span>
+      <span class="current" id="breadcrumb-current">All Products</span>
+    </nav>
 
-<!-- ═══ Categories ═══ -->
-<section class="categories" id="categories">
-  <div class="container">
-    <div class="section-header">
-      <h2 class="section-title"><span>Browse By</span>Categories</h2>
-      <a href="shop.html" class="view-all">View All →</a>
-    </div>
-    <div class="cat-grid">
-      <a href="shop.html?cat=wears" class="cat-card" data-cat="wears">
-        <img src="assets/graphic-tee.jpg" alt="Wears">
-        <div class="cat-card-overlay">
-          <h3>Wears</h3>
-          <p>T-Shirts, Shirts & Cargos</p>
-          <span class="btn btn-sm btn-outline-light">Shop Wears →</span>
+    <div class="shop-layout">
+      <!-- Sidebar -->
+      <aside class="shop-sidebar" id="shop-sidebar">
+        <div class="sidebar-head">
+          <h3>Filters</h3>
+          <button class="sidebar-head-close" onclick="closeShopSidebar()" aria-label="Close filters">✕</button>
         </div>
-      </a>
-      <a href="shop.html?cat=accessories" class="cat-card" data-cat="accessories">
-        <img src="assets/cuban-chain.jpg" alt="Accessories">
-        <div class="cat-card-overlay">
-          <h3>Accessories</h3>
-          <p>Cuban Chains, Eyewear & Watches</p>
-          <span class="btn btn-sm btn-outline-light">Shop Accessories →</span>
-        </div>
-      </a>
-      <a href="shop.html?cat=footwear" class="cat-card" data-cat="footwear">
-        <img src="assets/sneakers.jpg" alt="Footwear">
-        <div class="cat-card-overlay">
-          <h3>Footwear</h3>
-          <p>Chunky Runners & High-Tops</p>
-          <span class="btn btn-sm btn-outline-light">Shop Footwear →</span>
-        </div>
-      </a>
-    </div>
-  </div>
-</section>
 
-<!-- ═══ Collection ═══ -->
-<section class="collection" id="collection">
-  <div class="container">
-    <div class="section-header">
-      <h2 class="section-title"><span>Curated For You</span>The Collection</h2>
-    </div>
-    <div class="filter-bar" id="filter-bar">
-      <button class="filter-btn active" data-filter="all">All</button>
-      <button class="filter-btn" data-filter="wears">Wears</button>
-      <button class="filter-btn" data-filter="accessories">Accessories</button>
-      <button class="filter-btn" data-filter="footwear">Footwear</button>
-      <button class="filter-btn" data-filter="new">New Arrivals</button>
-    </div>
-    <div class="product-grid" id="product-grid"></div>
-    <div style="text-align:center;margin-top:40px">
-      <a href="shop.html" class="btn btn-dark" style="padding:14px 36px">Explore Full Shop & All Pages →</a>
-    </div>
-  </div>
-</section>
+        <div class="sidebar-group">
+          <h4>Categories</h4>
+          <button class="sidebar-link active" data-filter="all" onclick="shopFilter('all',this)">
+            All Products <span class="count" id="count-all">16</span>
+          </button>
+          <button class="sidebar-link" data-filter="wears" onclick="shopFilter('wears',this)">
+            Wears <span class="count" id="count-wears">7</span>
+          </button>
+          <button class="sidebar-link" data-filter="accessories" onclick="shopFilter('accessories',this)">
+            Accessories <span class="count" id="count-accessories">5</span>
+          </button>
+          <button class="sidebar-link" data-filter="footwear" onclick="shopFilter('footwear',this)">
+            Footwear <span class="count" id="count-footwear">3</span>
+          </button>
+          <button class="sidebar-link" data-filter="new" onclick="shopFilter('new',this)">
+            New Arrivals <span class="count" id="count-new">8</span>
+          </button>
+        </div>
 
-<!-- ═══ Editorial ═══ -->
-<section class="editorial" id="editorial">
-  <div class="container">
-    <div class="editorial-card">
-      <div class="editorial-text">
-        <span class="editorial-kicker">The Dakar Dapper Story</span>
-        <h2 class="editorial-title serif">Curated for the <em>Modern Gentleman</em></h2>
-        <p class="editorial-desc">We believe great style isn't about following trends — it's about defining them. Every piece is hand-selected from the world's finest makers to deliver the perfect balance of comfort, sophistication, and individuality.</p>
-        <a href="shop.html" class="btn btn-dark" style="align-self:flex-start;margin-top:8px">Shop Collection</a>
-      </div>
-      <div class="editorial-media">
-        <img src="assets/varsity-jacket.jpg" alt="Dakar Dapper Editorial">
+        <div class="sidebar-group">
+          <h4>Price Range</h4>
+          <button class="sidebar-link active" data-price="all" onclick="shopPriceFilter('all',this)">All Prices</button>
+          <button class="sidebar-link" data-price="under50" onclick="shopPriceFilter('under50',this)">Under ₦50,000</button>
+          <button class="sidebar-link" data-price="50to100" onclick="shopPriceFilter('50to100',this)">₦50,000 – ₦100,000</button>
+          <button class="sidebar-link" data-price="100to200" onclick="shopPriceFilter('100to200',this)">₦100,000 – ₦200,000</button>
+          <button class="sidebar-link" data-price="over200" onclick="shopPriceFilter('over200',this)">Over ₦200,000</button>
+        </div>
+
+        <div class="sidebar-group">
+          <h4>Sizes</h4>
+          <div class="sidebar-sizes">
+            <button class="sidebar-size" data-size="S" onclick="shopSizeFilter('S',this)">S</button>
+            <button class="sidebar-size" data-size="M" onclick="shopSizeFilter('M',this)">M</button>
+            <button class="sidebar-size" data-size="L" onclick="shopSizeFilter('L',this)">L</button>
+            <button class="sidebar-size" data-size="XL" onclick="shopSizeFilter('XL',this)">XL</button>
+            <button class="sidebar-size" data-size="XXL" onclick="shopSizeFilter('XXL',this)">XXL</button>
+            <button class="sidebar-size" data-size="40" onclick="shopSizeFilter('40',this)">40</button>
+            <button class="sidebar-size" data-size="41" onclick="shopSizeFilter('41',this)">41</button>
+            <button class="sidebar-size" data-size="42" onclick="shopSizeFilter('42',this)">42</button>
+            <button class="sidebar-size" data-size="43" onclick="shopSizeFilter('43',this)">43</button>
+            <button class="sidebar-size" data-size="44" onclick="shopSizeFilter('44',this)">44</button>
+            <button class="sidebar-size" data-size="45" onclick="shopSizeFilter('45',this)">45</button>
+            <button class="sidebar-size" data-size="One Size" onclick="shopSizeFilter('One Size',this)">OS</button>
+          </div>
+        </div>
+
+        <div class="sidebar-group">
+          <h4>Color Palette</h4>
+          <div class="sidebar-colors">
+            <button class="sidebar-color" data-color="black" onclick="shopColorFilter('black',this)">
+              <span class="sidebar-color-dot" style="background:#111"></span> Noir
+            </button>
+            <button class="sidebar-color" data-color="white" onclick="shopColorFilter('white',this)">
+              <span class="sidebar-color-dot" style="background:#f5f5f0"></span> Bone
+            </button>
+            <button class="sidebar-color" data-color="earth" onclick="shopColorFilter('earth',this)">
+              <span class="sidebar-color-dot" style="background:#8b5a2b"></span> Earth
+            </button>
+            <button class="sidebar-color" data-color="green" onclick="shopColorFilter('green',this)">
+              <span class="sidebar-color-dot" style="background:#2d5a27"></span> Olive
+            </button>
+            <button class="sidebar-color" data-color="silver" onclick="shopColorFilter('silver',this)">
+              <span class="sidebar-color-dot" style="background:#c0c0c0"></span> Silver
+            </button>
+          </div>
+        </div>
+
+        <button class="sidebar-reset-btn" onclick="clearAllFilters()">Reset All Filters</button>
+        <button class="btn btn-dark sidebar-apply-btn" onclick="closeShopSidebar()">Apply & Show Results</button>
+      </aside>
+
+      <!-- Main Grid -->
+      <div class="shop-main">
+        <div class="shop-header">
+          <div class="shop-title-area">
+            <h1 id="shop-page-title">All Products</h1>
+            <p class="product-count" id="shop-product-count">Showing 16 products</p>
+          </div>
+          <div class="shop-actions-bar">
+            <button class="btn-filter-mobile" id="mobile-filter-btn" onclick="toggleShopSidebar()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+              <span>Filters</span>
+              <span class="filter-badge-dot" id="active-filter-badge" style="display:none">0</span>
+            </button>
+            <div class="shop-sort">
+              <select id="shop-sort" onchange="shopSort(this.value)">
+                <option value="featured">Featured Collection</option>
+                <option value="price-low">Price: Low → High</option>
+                <option value="price-high">Price: High → Low</option>
+                <option value="newest">Newest First</option>
+                <option value="rating">Top Rated</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Active Filter Pills Bar -->
+        <div class="active-filters-bar" id="active-filters-bar" style="display:none"></div>
+
+        <!-- Product Grid -->
+        <div class="shop-product-grid" id="shop-grid"></div>
+
+        <!-- Pagination Controls -->
+        <div id="shop-pagination"></div>
       </div>
     </div>
   </div>
-</section>
+</main>
 
 <!-- ═══ Newsletter ═══ -->
-<section class="newsletter" id="about">
+<section class="newsletter" style="margin-top:80px">
   <div class="container">
     <span class="gold" style="font-size:.72rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase">Stay In Style</span>
     <h2 class="serif">Be the First to Know</h2>
@@ -253,7 +259,7 @@
       </div>
       <div>
         <h4>Company</h4>
-        <a href="#editorial">About Us</a><a href="#contact">Contact</a><a href="#">Shipping & Returns</a><a href="#">Privacy</a>
+        <a href="index.html#editorial">About Us</a><a href="#">Contact</a><a href="#">Shipping & Returns</a><a href="#">Privacy</a>
       </div>
       <div>
         <h4>Connect</h4>
@@ -271,7 +277,7 @@
 <div class="drawer" id="cart-drawer">
   <div class="drawer-head"><h3>Shopping Bag</h3><button class="drawer-close" id="cart-close">✕</button></div>
   <div class="ship-meter" id="ship-meter"><span id="ship-msg">Add ₦150,000 for free shipping</span><div class="ship-bar"><div class="ship-fill" id="ship-fill"></div></div></div>
-  <div class="drawer-body" id="cart-items"><div class="empty-state"><h3>Your bag is empty</h3><p>Explore our collection and find something you love.</p><button class="btn btn-dark" onclick="closeAllDrawers();scrollToSection('collection')">Browse Collection</button></div></div>
+  <div class="drawer-body" id="cart-items"><div class="empty-state"><h3>Your bag is empty</h3><p>Explore our collection and find something you love.</p><button class="btn btn-dark" onclick="closeAllDrawers()">Browse Collection</button></div></div>
   <div class="drawer-foot" id="cart-footer" style="display:none"><div class="subtotal-row"><span>Subtotal</span><span id="cart-total">₦0</span></div><button class="btn btn-dark buy-full" id="checkout-btn">Checkout</button></div>
 </div>
 
@@ -374,7 +380,6 @@
       <button class="auth-tab active" data-tab="signin" id="tab-signin">Sign In</button>
       <button class="auth-tab" data-tab="signup" id="tab-signup">Sign Up</button>
     </div>
-    <!-- Sign In Form -->
     <form class="auth-form" id="signin-form">
       <div class="auth-field"><label>Email</label><input type="email" placeholder="your@email.com" required></div>
       <div class="auth-field"><label>Password</label><input type="password" placeholder="••••••••" required></div>
@@ -384,7 +389,6 @@
       </div>
       <button class="btn btn-dark buy-full" type="submit" style="margin-top:6px">Sign In</button>
     </form>
-    <!-- Sign Up Form -->
     <form class="auth-form" id="signup-form" style="display:none">
       <div class="auth-field"><label>Full Name</label><input type="text" placeholder="John Doe" required></div>
       <div class="auth-field"><label>Email</label><input type="email" placeholder="your@email.com" required></div>
@@ -409,5 +413,6 @@
 <!-- ═══ JavaScript ═══ -->
 <script src="js/products.js"></script>
 <script src="js/app.js"></script>
+<script src="js/shop.js"></script>
 </body>
 </html>

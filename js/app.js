@@ -3,8 +3,8 @@
    ========================================================================== */
 
 /* ── STATE ─────────────────────────────────────────────────────────── */
-let cart = [];
-let wishlist = [];
+let cart = JSON.parse(localStorage.getItem("dd_cart") || "[]");
+let wishlist = JSON.parse(localStorage.getItem("dd_wish") || "[]");
 let activeFilter = "all";
 let currentModal = null;
 let galleryIndex = 0;
@@ -19,13 +19,85 @@ document.addEventListener("DOMContentLoaded", () => {
   bindSearch();
   bindWhatsApp();
   bindModalClose();
+  bindAuth();
+  bindHeroScroll();
+  bindCardReveal();
+  renderCart();
+  renderWishlist();
 });
+
+/* ── PERSIST ───────────────────────────────────────────────────────── */
+function saveCart() { localStorage.setItem("dd_cart", JSON.stringify(cart)); }
+function saveWish() { localStorage.setItem("dd_wish", JSON.stringify(wishlist)); }
+
+/* ── HERO SCROLL ANIMATION ─────────────────────────────────────────── */
+function bindHeroScroll() {
+  const hero = document.getElementById("home");
+  if (!hero) return;
+  const heroBgImg = hero.querySelector(".hero-bg img");
+  const heroFade = document.getElementById("hero-fade-out");
+  const heroContent = hero.querySelector(".hero-content");
+  if (!heroBgImg || !heroFade) return;
+
+  let ticking = false;
+
+  function onScroll() {
+    if (!ticking) {
+      requestAnimationFrame(() => {
+        const rect = hero.getBoundingClientRect();
+        const heroH = hero.offsetHeight;
+        // scrollProgress: 0 at top, 1 when hero has scrolled out
+        const scrollProgress = Math.max(0, Math.min(1, -rect.top / heroH));
+
+        // Zoom: 1.0 → 1.15
+        const scale = 1 + scrollProgress * 0.15;
+        heroBgImg.style.transform = `scale(${scale})`;
+
+        // Fade: starts at 60% scroll, full at 100%
+        const fadeProgress = Math.max(0, (scrollProgress - 0.6) / 0.4);
+        heroFade.style.opacity = fadeProgress;
+
+        // Content parallax: slight upward movement + fade
+        if (heroContent) {
+          const contentFade = 1 - scrollProgress * 1.2;
+          const contentShift = scrollProgress * -30;
+          heroContent.style.opacity = Math.max(0, contentFade);
+          heroContent.style.transform = `translateY(${contentShift}px)`;
+        }
+
+        ticking = false;
+      });
+      ticking = true;
+    }
+  }
+
+  window.addEventListener("scroll", onScroll, { passive: true });
+  onScroll(); // Initial call
+}
+
+/* ── CARD REVEAL ANIMATION ─────────────────────────────────────────── */
+function bindCardReveal() {
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry, i) => {
+      if (entry.isIntersecting) {
+        // Stagger the reveal
+        const card = entry.target;
+        const idx = Array.from(card.parentElement.children).indexOf(card);
+        setTimeout(() => card.classList.add("revealed"), idx * 80);
+        observer.unobserve(card);
+      }
+    });
+  }, { threshold: 0.1, rootMargin: "0px 0px -40px 0px" });
+
+  document.querySelectorAll(".p-card").forEach(card => observer.observe(card));
+}
 
 /* ── PRODUCTS RENDERING ────────────────────────────────────────────── */
 function renderProducts(filter, query) {
   const f = filter || activeFilter;
   const grid = document.getElementById("product-grid");
-  let items = PRODUCTS;
+  if (!grid) return;
+  let items = [...PRODUCTS];
 
   if (f === "new") items = items.filter(p => p.isNew);
   else if (f !== "all") items = items.filter(p => p.category === f);
@@ -38,6 +110,9 @@ function renderProducts(filter, query) {
       p.category.toLowerCase().includes(q) ||
       (p.badge && p.badge.toLowerCase().includes(q))
     );
+  } else if (f === "all") {
+    // Show top 8 items on homepage curated showcase
+    items = items.slice(0, 8);
   }
 
   if (!items.length) {
@@ -49,7 +124,7 @@ function renderProducts(filter, query) {
     const disc = p.originalPrice ? Math.round((1 - p.price / p.originalPrice) * 100) : 0;
     const inWish = wishlist.includes(p.id);
     return `
-    <div class="p-card" data-id="${p.id}">
+    <div class="p-card" data-id="${p.id}" onclick="openProduct(${p.id})">
       <div class="p-card-media">
         ${p.badge ? `<div class="p-badge"><span class="${p.badgeType}">${p.badge}</span></div>` : ""}
         <button class="heart-btn${inWish ? " active" : ""}" onclick="event.stopPropagation();toggleWish(${p.id})" aria-label="Wishlist">
@@ -61,7 +136,7 @@ function renderProducts(filter, query) {
           <button class="p-action-btn add" onclick="event.stopPropagation();addToCart(${p.id})">+ Bag</button>
         </div>
       </div>
-      <div class="p-info" onclick="openProduct(${p.id})">
+      <div class="p-info">
         <div class="p-info-top">
           <span class="p-cat">${p.category}</span>
           <span class="p-rating">★ ${p.rating}</span>
@@ -76,11 +151,16 @@ function renderProducts(filter, query) {
       </div>
     </div>`;
   }).join("");
+
+  // Re-bind card reveal for newly rendered cards
+  bindCardReveal();
 }
 
 /* ── FILTERS ───────────────────────────────────────────────────────── */
 function bindFilters() {
-  document.getElementById("filter-bar").addEventListener("click", e => {
+  const bar = document.getElementById("filter-bar");
+  if (!bar) return;
+  bar.addEventListener("click", e => {
     const btn = e.target.closest(".filter-btn");
     if (!btn) return;
     filterProducts(btn.dataset.filter);
@@ -106,9 +186,11 @@ function bindHeader() {
     document.body.classList.add("no-scroll");
   });
   document.getElementById("mobile-close").addEventListener("click", closeAllDrawers);
-  // Mobile nav links
+  // Mobile nav links (only close if it's a hash link)
   document.querySelectorAll(".mob-link").forEach(a => {
-    a.addEventListener("click", () => closeAllDrawers());
+    a.addEventListener("click", () => {
+      if (a.getAttribute("href").startsWith("#")) closeAllDrawers();
+    });
   });
 }
 
@@ -132,7 +214,8 @@ function openDrawer(id) {
 function closeAllDrawers() {
   document.querySelectorAll(".drawer, .mobile-drawer").forEach(d => d.classList.remove("open"));
   document.getElementById("overlay").classList.remove("active");
-  document.getElementById("search-overlay").classList.remove("open");
+  const searchOverlay = document.getElementById("search-overlay");
+  if (searchOverlay) searchOverlay.classList.remove("open");
   document.body.classList.remove("no-scroll");
 }
 
@@ -146,18 +229,21 @@ function addToCart(id, size, color, qty) {
   const existing = cart.find(i => i.id === id && i.size === s && i.color === c);
   if (existing) existing.qty += q;
   else cart.push({ id, size: s, color: c, qty: q });
+  saveCart();
   renderCart();
   showToast(`${p.name} added to bag`);
 }
 
 function removeFromCart(idx) {
   cart.splice(idx, 1);
+  saveCart();
   renderCart();
 }
 
 function updateQty(idx, delta) {
   cart[idx].qty += delta;
   if (cart[idx].qty < 1) cart.splice(idx, 1);
+  saveCart();
   renderCart();
 }
 
@@ -165,12 +251,13 @@ function renderCart() {
   const container = document.getElementById("cart-items");
   const footer = document.getElementById("cart-footer");
   const badge = document.getElementById("cart-count");
+  if (!container || !footer || !badge) return;
   const totalItems = cart.reduce((s, i) => s + i.qty, 0);
   badge.textContent = totalItems;
   badge.style.display = totalItems > 0 ? "flex" : "none";
 
   if (!cart.length) {
-    container.innerHTML = `<div class="empty-state"><h3>Your bag is empty</h3><p>Explore our collection and find something you love.</p><button class="btn btn-dark" onclick="closeAllDrawers();scrollToSection('collection')">Browse Collection</button></div>`;
+    container.innerHTML = `<div class="empty-state"><h3>Your bag is empty</h3><p>Explore our collection and find something you love.</p><button class="btn btn-dark" onclick="closeAllDrawers();window.location.href='shop.html'">Browse Collection</button></div>`;
     footer.style.display = "none";
     return;
   }
@@ -211,6 +298,7 @@ function toggleWish(id) {
   const i = wishlist.indexOf(id);
   if (i >= 0) wishlist.splice(i, 1);
   else wishlist.push(id);
+  saveWish();
   renderProducts();
   renderWishlist();
   const p = PRODUCTS.find(x => x.id === id);
@@ -220,6 +308,7 @@ function toggleWish(id) {
 function renderWishlist() {
   const container = document.getElementById("wish-items");
   const badge = document.getElementById("wish-count");
+  if (!container || !badge) return;
   badge.textContent = wishlist.length;
   badge.style.display = wishlist.length > 0 ? "flex" : "none";
 
@@ -354,6 +443,24 @@ function bindModalClose() {
   document.getElementById("checkout-modal").addEventListener("click", e => {
     if (e.target.id === "checkout-modal") closeCheckout();
   });
+  // Auth modal
+  const authModal = document.getElementById("auth-modal");
+  if (authModal) {
+    authModal.addEventListener("click", e => {
+      if (e.target.id === "auth-modal") closeAuth();
+    });
+  }
+
+  // Escape key closes all modals
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape") {
+      if (document.getElementById("product-modal").classList.contains("open")) closeModal();
+      else if (document.getElementById("auth-modal")?.classList.contains("open")) closeAuth();
+      else if (document.getElementById("size-modal").classList.contains("open")) closeSizeGuide();
+      else if (document.getElementById("checkout-modal").classList.contains("open")) closeCheckout();
+      else closeAllDrawers();
+    }
+  });
 }
 
 function setGallery(i) {
@@ -437,14 +544,75 @@ function placeOrder() {
       <div class="check-circle">✓</div>
       <h2 style="font-family:var(--font-serif);font-size:1.6rem;margin-bottom:8px">Order Confirmed!</h2>
       <p style="color:var(--text-sub);margin-bottom:20px">Thank you for shopping with Dakar Dapper. We'll send you a confirmation email and WhatsApp message shortly.</p>
-      <button class="btn btn-dark" onclick="closeCheckout();cart=[];renderCart()">Continue Shopping</button>
+      <button class="btn btn-dark" onclick="closeCheckout();cart=[];saveCart();renderCart()">Continue Shopping</button>
     </div>`;
   showToast("Order placed successfully! 🎉");
 }
 
+/* ── AUTH MODAL ─────────────────────────────────────────────────────── */
+function bindAuth() {
+  const authToggle = document.getElementById("auth-toggle");
+  if (authToggle) {
+    authToggle.addEventListener("click", openAuth);
+  }
+  const authClose = document.getElementById("auth-close");
+  if (authClose) {
+    authClose.addEventListener("click", closeAuth);
+  }
+
+  // Tab switching
+  const tabSignin = document.getElementById("tab-signin");
+  const tabSignup = document.getElementById("tab-signup");
+  if (tabSignin && tabSignup) {
+    tabSignin.addEventListener("click", () => switchAuthTab("signin"));
+    tabSignup.addEventListener("click", () => switchAuthTab("signup"));
+  }
+
+  // Form submissions
+  const signinForm = document.getElementById("signin-form");
+  if (signinForm) {
+    signinForm.addEventListener("submit", e => {
+      e.preventDefault();
+      showToast("Welcome back! 👋");
+      closeAuth();
+    });
+  }
+  const signupForm = document.getElementById("signup-form");
+  if (signupForm) {
+    signupForm.addEventListener("submit", e => {
+      e.preventDefault();
+      showToast("Account created successfully! 🎉");
+      closeAuth();
+    });
+  }
+}
+
+function openAuth() {
+  document.getElementById("auth-modal").classList.add("open");
+  document.body.classList.add("no-scroll");
+}
+
+function closeAuth() {
+  document.getElementById("auth-modal").classList.remove("open");
+  document.body.classList.remove("no-scroll");
+}
+
+function switchAuthTab(tab) {
+  document.getElementById("tab-signin").classList.toggle("active", tab === "signin");
+  document.getElementById("tab-signup").classList.toggle("active", tab === "signup");
+  document.getElementById("signin-form").style.display = tab === "signin" ? "flex" : "none";
+  document.getElementById("signup-form").style.display = tab === "signup" ? "flex" : "none";
+  document.getElementById("auth-title").textContent = tab === "signin" ? "Welcome Back" : "Create Account";
+  document.getElementById("auth-subtitle").textContent = tab === "signin"
+    ? "Sign in to your Dakar Dapper account"
+    : "Join the Dakar Dapper family";
+}
+
 /* ── SEARCH ────────────────────────────────────────────────────────── */
 function bindSearch() {
-  document.getElementById("search-toggle").addEventListener("click", () => {
+  const searchToggle = document.getElementById("search-toggle");
+  if (!searchToggle) return;
+  searchToggle.addEventListener("click", () => {
     document.getElementById("search-overlay").classList.add("open");
     document.getElementById("search-input").focus();
   });
@@ -469,15 +637,18 @@ function bindWhatsApp() {
   const btn = document.getElementById("wa-btn");
   const popup = document.getElementById("wa-popup");
   const close = document.getElementById("wa-close");
+  if (!btn || !popup) return;
 
   btn.addEventListener("click", () => {
     waOpen = !waOpen;
     popup.classList.toggle("open", waOpen);
   });
-  close.addEventListener("click", () => {
-    waOpen = false;
-    popup.classList.remove("open");
-  });
+  if (close) {
+    close.addEventListener("click", () => {
+      waOpen = false;
+      popup.classList.remove("open");
+    });
+  }
   // Chips
   document.querySelectorAll(".wa-chip").forEach(chip => {
     chip.addEventListener("click", () => {
@@ -486,10 +657,14 @@ function bindWhatsApp() {
     });
   });
   // Send
-  document.getElementById("wa-send").addEventListener("click", sendWaMsg);
-  document.getElementById("wa-msg").addEventListener("keypress", e => {
-    if (e.key === "Enter") sendWaMsg();
-  });
+  const waSend = document.getElementById("wa-send");
+  if (waSend) waSend.addEventListener("click", sendWaMsg);
+  const waMsg = document.getElementById("wa-msg");
+  if (waMsg) {
+    waMsg.addEventListener("keypress", e => {
+      if (e.key === "Enter") sendWaMsg();
+    });
+  }
 }
 
 function sendWaMsg() {
@@ -515,6 +690,7 @@ function handleNewsletter(e) {
 /* ── TOAST ──────────────────────────────────────────────────────────── */
 function showToast(msg) {
   const box = document.getElementById("toast-box");
+  if (!box) return;
   const toast = document.createElement("div");
   toast.className = "toast";
   toast.innerHTML = `<span class="toast-icon">✦</span>${msg}`;
@@ -535,8 +711,11 @@ function scrollToSection(id) {
 
 /* ── LOGO SCROLL TO TOP ───────────────────────────────────────────── */
 document.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("logo-link").addEventListener("click", e => {
-    e.preventDefault();
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  });
+  const logoLink = document.getElementById("logo-link");
+  if (logoLink) {
+    logoLink.addEventListener("click", e => {
+      e.preventDefault();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  }
 });
