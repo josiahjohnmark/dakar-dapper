@@ -37,32 +37,77 @@ function bindHeroScroll() {
   const heroBgImg = hero.querySelector(".hero-bg img");
   const heroFade = document.getElementById("hero-fade-out");
   const heroContent = hero.querySelector(".hero-content");
+  const heroOverlay = hero.querySelector(".hero-overlay");
   if (!heroBgImg || !heroFade) return;
 
   let ticking = false;
+
+  /* Smooth cinematic easing curves */
+  function easeOutQuad(t) { return t * (2 - t); }
+  function easeInCubic(t) { return t * t * t; }
+  function easeInOutCubic(t) {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  }
 
   function onScroll() {
     if (!ticking) {
       requestAnimationFrame(() => {
         const rect = hero.getBoundingClientRect();
         const heroH = hero.offsetHeight;
-        // scrollProgress: 0 at top, 1 when hero has scrolled out
+        if (heroH <= 0) { ticking = false; return; }
+
+        // scrollProgress: 0 when hero top is at top, 1 when hero has completely exited
         const scrollProgress = Math.max(0, Math.min(1, -rect.top / heroH));
 
-        // Zoom: 1.0 → 1.15
-        const scale = 1 + scrollProgress * 0.15;
-        heroBgImg.style.transform = `scale(${scale})`;
+        // ── 1. Cinematic Dolly Zoom ─────────────────────────────────────────
+        // Continuous, smooth filmic push-in as user scrolls through hero
+        const zoomFactor = 0.10;
+        const scale = 1 + easeOutQuad(scrollProgress) * zoomFactor;
+        heroBgImg.style.transform = `scale(${scale.toFixed(4)}) translateZ(0)`;
 
-        // Fade: starts at 60% scroll, full at 100%
-        const fadeProgress = Math.max(0, (scrollProgress - 0.6) / 0.4);
-        heroFade.style.opacity = fadeProgress;
+        // ── 2. Cinematic Dissolve (Starts when about to move to next page) ──
+        // Fade stays at 0 during the read phase (0.0 to 0.68)
+        // Only kicks in as the user scrolls towards the bottom and reaches the transition
+        const fadeThreshold = 0.68;
+        if (scrollProgress <= fadeThreshold) {
+          heroFade.style.opacity = 0;
+          heroBgImg.style.opacity = 0.55;
+        } else {
+          const fadeProgress = (scrollProgress - fadeThreshold) / (1 - fadeThreshold);
+          const easedFade = easeInCubic(fadeProgress);
+          heroFade.style.opacity = easedFade.toFixed(3);
 
-        // Content parallax: slight upward movement + fade
+          // Softly dissolve the background image itself for seamless film transition
+          const imgFade = 0.55 * (1 - easeInOutCubic(fadeProgress) * 0.7);
+          heroBgImg.style.opacity = imgFade.toFixed(3);
+        }
+
+        // ── 3. Subtle Dramatic Overlay Shift ────────────────────────────────
+        if (heroOverlay) {
+          const darken = Math.min(scrollProgress * 0.2, 0.18);
+          heroOverlay.style.background = `linear-gradient(to right,
+            rgba(0,0,0,${(0.72 + darken).toFixed(2)}) 0%,
+            rgba(0,0,0,${(0.25 + darken).toFixed(2)}) 60%,
+            rgba(0,0,0,${darken.toFixed(2)}) 100%)`;
+        }
+
+        // ── 4. Content Lift & Dissolve ──────────────────────────────────────
+        // Keeps text crisp and readable, then smoothly lifts up and dissolves
+        // as the next section rolls in
         if (heroContent) {
-          const contentFade = 1 - scrollProgress * 1.2;
-          const contentShift = scrollProgress * -30;
-          heroContent.style.opacity = Math.max(0, contentFade);
-          heroContent.style.transform = `translateY(${contentShift}px)`;
+          const textDissolveStart = 0.52;
+          const textDissolveEnd = 0.90;
+          if (scrollProgress <= textDissolveStart) {
+            heroContent.style.opacity = 1;
+            heroContent.style.transform = "translateY(0px)";
+          } else {
+            const textProgress = Math.min(1,
+              (scrollProgress - textDissolveStart) / (textDissolveEnd - textDissolveStart));
+            const textOpacity = Math.max(0, 1 - easeInOutCubic(textProgress));
+            const textShift = -45 * easeOutQuad(textProgress);
+            heroContent.style.opacity = textOpacity.toFixed(3);
+            heroContent.style.transform = `translateY(${textShift.toFixed(1)}px)`;
+          }
         }
 
         ticking = false;

@@ -126,8 +126,8 @@ ul{list-style:none}
 .hero-overlay{position:absolute;inset:0;background:linear-gradient(to right,rgba(0,0,0,.72) 0%,rgba(0,0,0,.25) 60%,transparent 100%);z-index:2}
 .hero-fade-out{
   position:absolute;inset:0;z-index:4;pointer-events:none;
-  background:linear-gradient(to top, var(--bg) 0%, transparent 100%);
-  opacity:0;will-change:opacity;
+  background:linear-gradient(to top, var(--bg-white) 0%, rgba(255,255,255,0.92) 20%, rgba(248,246,242,0.65) 45%, transparent 100%);
+  opacity:0;will-change:opacity;transform:translateZ(0);
 }
 .hero-content{position:relative;z-index:5;max-width:620px;padding:0 clamp(24px,6vw,80px)}
 .hero-badge{
