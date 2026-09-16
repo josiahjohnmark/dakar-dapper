@@ -122,19 +122,18 @@ ul{list-style:none}
 }
 .hero-vignette{
   position:absolute;left:0;right:0;bottom:0;
-  height:clamp(160px, 30vh, 320px);
+  height:clamp(150px, 26vh, 280px);
   z-index:3;pointer-events:none;
   background:linear-gradient(
     to top,
     #ffffff 0%,
-    rgba(255,255,255,0.98) 15%,
-    rgba(255,255,255,0.85) 32%,
-    rgba(255,255,255,0.60) 52%,
-    rgba(255,255,255,0.30) 72%,
-    rgba(255,255,255,0.08) 88%,
+    rgba(255,255,255,0.97) 16%,
+    rgba(255,255,255,0.82) 32%,
+    rgba(255,255,255,0.55) 52%,
+    rgba(255,255,255,0.25) 72%,
+    rgba(255,255,255,0.06) 88%,
     transparent 100%
   );
-  opacity:0;will-change:opacity;transform:translateZ(0);
 }
 .hero-content{position:relative;z-index:5;max-width:620px;padding:0 clamp(24px,6vw,80px)}
 .hero-badge{

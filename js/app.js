@@ -60,27 +60,23 @@ function bindHeroScroll() {
         // scrollProgress: 0 when hero top is at top, 1 when hero has completely exited
         const scrollProgress = Math.max(0, Math.min(1, -rect.top / heroH));
 
-        // ── 1. Cinematic Dolly Zoom ─────────────────────────────────────────
-        const zoomFactor = 0.10;
+        // ── 1. Cinematic Dolly Zoom (Soft & increased slightly) ─────────────
+        const zoomFactor = 0.16;
         const scale = 1 + easeOutQuad(scrollProgress) * zoomFactor;
         heroBgImg.style.transform = `scale(${scale.toFixed(4)}) translateZ(0)`;
 
-        // ── 2. White Vignette & Fade Dissolve (Only activates when scrolling down to next page) ──
-        // Stays at 0 at the top so the full hero photo is crystal clear.
-        // Starts softly as user scrolls down past 45%, smoothly dissolving into white page.
-        const vignetteStart = 0.40;
-        if (scrollProgress <= vignetteStart) {
-          if (heroVignette) heroVignette.style.opacity = 0;
+        // ── 2. Cinematic Dissolve as user moves to next page ────────────────
+        const fadeStart = 0.50;
+        if (scrollProgress <= fadeStart) {
           if (heroFade) heroFade.style.opacity = 0;
           heroBgImg.style.opacity = 0.55;
         } else {
-          const fadeProgress = Math.min(1, (scrollProgress - vignetteStart) / (0.95 - vignetteStart));
-          const easedVignette = easeInOutCubic(fadeProgress);
-          if (heroVignette) heroVignette.style.opacity = easedVignette.toFixed(3);
-          if (heroFade) heroFade.style.opacity = (easedVignette * 0.9).toFixed(3);
+          const fadeProgress = Math.min(1, (scrollProgress - fadeStart) / (0.95 - fadeStart));
+          const easedFade = easeInOutCubic(fadeProgress);
+          if (heroFade) heroFade.style.opacity = easedFade.toFixed(3);
 
           // Softly dissolve the background image itself for seamless film transition
-          const imgFade = 0.55 * (1 - easeInOutCubic(fadeProgress) * 0.7);
+          const imgFade = 0.55 * (1 - easeInOutCubic(fadeProgress) * 0.75);
           heroBgImg.style.opacity = imgFade.toFixed(3);
         }
 
