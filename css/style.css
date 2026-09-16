@@ -59,8 +59,8 @@ ul{list-style:none}
 .btn-dark:hover{background:#2a2a2a;transform:translateY(-1px);box-shadow:var(--shadow-m)}
 .btn-outline{background:transparent;color:var(--text);border:1.5px solid var(--text)}
 .btn-outline:hover{background:var(--text);color:var(--text-white)}
-.btn-outline-light{border:1.5px solid rgba(255,255,255,.35);color:var(--text-white);background:transparent}
-.btn-outline-light:hover{background:var(--text-white);color:var(--bg-dark)}
+.btn-outline-light{border:1.5px solid rgba(255,255,255,.45);color:var(--text-white);background:rgba(0,0,0,.3);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.btn-outline-light:hover{background:var(--text-white);color:var(--bg-dark);border-color:var(--text-white)}
 .btn-gold{background:var(--gold);color:var(--bg-dark)}
 .btn-gold:hover{background:var(--gold-light)}
 .btn-sm{padding:9px 20px;font-size:.75rem}
@@ -128,6 +128,21 @@ ul{list-style:none}
   position:absolute;inset:0;z-index:4;pointer-events:none;
   background:linear-gradient(to top, var(--bg-white) 0%, rgba(255,255,255,0.92) 20%, rgba(248,246,242,0.65) 45%, transparent 100%);
   opacity:0;will-change:opacity;transform:translateZ(0);
+}
+.hero-vignette{
+  position:absolute;left:0;right:0;bottom:0;
+  height:clamp(140px, 25vh, 260px);
+  z-index:3;pointer-events:none;
+  background:linear-gradient(
+    to top,
+    #ffffff 0%,
+    rgba(255,255,255,0.97) 14%,
+    rgba(255,255,255,0.85) 28%,
+    rgba(255,255,255,0.60) 48%,
+    rgba(255,255,255,0.30) 68%,
+    rgba(255,255,255,0.08) 86%,
+    transparent 100%
+  );
 }
 .hero-content{position:relative;z-index:5;max-width:620px;padding:0 clamp(24px,6vw,80px)}
 .hero-badge{
@@ -280,7 +295,7 @@ ul{list-style:none}
 .editorial-media img{width:100%;height:100%;object-fit:cover;object-position:center 20%}
 
 /* ── Trust Strip ──────────────────────────────────────────────────── */
-.trust{border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:32px 0;background:var(--bg-white)}
+.trust{border-top:none;border-bottom:1px solid var(--border);padding:36px 0;background:var(--bg-white)}
 .trust-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
 .trust-item{display:flex;align-items:center;gap:14px}
 .trust-icon{
