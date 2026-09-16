@@ -36,9 +36,10 @@ function bindHeroScroll() {
   if (!hero) return;
   const heroBgImg = hero.querySelector(".hero-bg img");
   const heroFade = document.getElementById("hero-fade-out");
+  const heroVignette = document.getElementById("hero-vignette");
   const heroContent = hero.querySelector(".hero-content");
   const heroOverlay = hero.querySelector(".hero-overlay");
-  if (!heroBgImg || !heroFade) return;
+  if (!heroBgImg) return;
 
   let ticking = false;
 
@@ -60,22 +61,23 @@ function bindHeroScroll() {
         const scrollProgress = Math.max(0, Math.min(1, -rect.top / heroH));
 
         // ── 1. Cinematic Dolly Zoom ─────────────────────────────────────────
-        // Continuous, smooth filmic push-in as user scrolls through hero
         const zoomFactor = 0.10;
         const scale = 1 + easeOutQuad(scrollProgress) * zoomFactor;
         heroBgImg.style.transform = `scale(${scale.toFixed(4)}) translateZ(0)`;
 
-        // ── 2. Cinematic Dissolve (Starts when about to move to next page) ──
-        // Fade stays at 0 during the read phase (0.0 to 0.68)
-        // Only kicks in as the user scrolls towards the bottom and reaches the transition
-        const fadeThreshold = 0.68;
-        if (scrollProgress <= fadeThreshold) {
-          heroFade.style.opacity = 0;
+        // ── 2. White Vignette & Fade Dissolve (Only activates when scrolling down to next page) ──
+        // Stays at 0 at the top so the full hero photo is crystal clear.
+        // Starts softly as user scrolls down past 45%, smoothly dissolving into white page.
+        const vignetteStart = 0.40;
+        if (scrollProgress <= vignetteStart) {
+          if (heroVignette) heroVignette.style.opacity = 0;
+          if (heroFade) heroFade.style.opacity = 0;
           heroBgImg.style.opacity = 0.55;
         } else {
-          const fadeProgress = (scrollProgress - fadeThreshold) / (1 - fadeThreshold);
-          const easedFade = easeInCubic(fadeProgress);
-          heroFade.style.opacity = easedFade.toFixed(3);
+          const fadeProgress = Math.min(1, (scrollProgress - vignetteStart) / (0.95 - vignetteStart));
+          const easedVignette = easeInOutCubic(fadeProgress);
+          if (heroVignette) heroVignette.style.opacity = easedVignette.toFixed(3);
+          if (heroFade) heroFade.style.opacity = (easedVignette * 0.9).toFixed(3);
 
           // Softly dissolve the background image itself for seamless film transition
           const imgFade = 0.55 * (1 - easeInOutCubic(fadeProgress) * 0.7);
