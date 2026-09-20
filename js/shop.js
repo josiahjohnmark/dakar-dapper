@@ -8,8 +8,11 @@ let shopPriceRange = "all";
 let shopSize = "all";
 let shopColor = "all";
 let shopSortBy = "featured";
+let shopQuery = "";
+let lastFilteredCount = 0;
 let currentPage = 1;
-const itemsPerPage = 6;
+// 6 was too few: it forced pagination after barely one screen on desktop.
+const itemsPerPage = 12;
 
 /* ── COLOR MAPPINGS ────────────────────────────────────────────────── */
 const COLOR_MAPPINGS = {
@@ -22,17 +25,97 @@ const COLOR_MAPPINGS = {
 
 /* ── INIT ──────────────────────────────────────────────────────────── */
 document.addEventListener("DOMContentLoaded", () => {
-  // Check URL params for deep-linking
-  const params = new URLSearchParams(window.location.search);
-  const cat = params.get("cat");
-  if (cat) {
-    shopCategory = cat;
-  }
-
+  readFiltersFromUrl();
+  bindShopSearch();
   renderShopCategories();
   updateCounts();
   renderShop();
+
+  // Back and forward should move through filter states, not leave the page.
+  window.addEventListener("popstate", () => {
+    readFiltersFromUrl();
+    syncSidebarToState();
+    renderShop();
+  });
 });
+
+/* ── URL <-> filter state ───────────────────────────────────────────────
+   Filters live in the query string so a filtered view can be bookmarked,
+   shared, or reached again with the back button. */
+function readFiltersFromUrl() {
+  const p = new URLSearchParams(location.search);
+  shopCategory   = p.get("cat")   || "all";
+  shopPriceRange = p.get("price") || "all";
+  shopSize       = p.get("size")  || "all";
+  shopColor      = p.get("color") || "all";
+  shopSortBy     = p.get("sort")  || "featured";
+  shopQuery      = p.get("q")     || "";
+  currentPage    = Math.max(1, Number(p.get("page")) || 1);
+
+  const box = document.getElementById("shop-search");
+  if (box) box.value = shopQuery;
+  const sortSel = document.getElementById("shop-sort");
+  if (sortSel) sortSel.value = shopSortBy;
+}
+
+function writeFiltersToUrl(push) {
+  const p = new URLSearchParams();
+  if (shopCategory !== "all")   p.set("cat", shopCategory);
+  if (shopPriceRange !== "all") p.set("price", shopPriceRange);
+  if (shopSize !== "all")       p.set("size", shopSize);
+  if (shopColor !== "all")      p.set("color", shopColor);
+  if (shopSortBy !== "featured") p.set("sort", shopSortBy);
+  if (shopQuery)                p.set("q", shopQuery);
+  if (currentPage > 1)          p.set("page", String(currentPage));
+
+  const url = location.pathname + (p.toString() ? "?" + p : "");
+  if (push) history.pushState({}, "", url);
+  else history.replaceState({}, "", url);
+}
+
+function syncSidebarToState() {
+  document.querySelectorAll(".sidebar-link[data-filter]").forEach(b =>
+    b.classList.toggle("active", b.dataset.filter === shopCategory));
+  document.querySelectorAll(".sidebar-link[data-price]").forEach(b =>
+    b.classList.toggle("active", b.dataset.price === shopPriceRange));
+  document.querySelectorAll(".sidebar-size").forEach(b =>
+    b.classList.toggle("active", b.dataset.size === shopSize));
+  document.querySelectorAll(".sidebar-color").forEach(b =>
+    b.classList.toggle("active", b.dataset.color === shopColor));
+}
+
+/* ── In-page search ─────────────────────────────────────────────────── */
+function bindShopSearch() {
+  const box = document.getElementById("shop-search");
+  if (!box) return;
+  let t;
+  box.addEventListener("input", () => {
+    clearTimeout(t);
+    t = setTimeout(() => {
+      shopQuery = box.value.trim();
+      currentPage = 1;
+      writeFiltersToUrl(false);
+      renderShop();
+    }, 200);
+  });
+  const clear = document.getElementById("shop-search-clear");
+  if (clear) clear.addEventListener("click", () => {
+    box.value = "";
+    shopQuery = "";
+    currentPage = 1;
+    writeFiltersToUrl(false);
+    renderShop();
+    box.focus();
+  });
+}
+
+function matchesQuery(p, q) {
+  const hay = [p.name, p.subtitle, p.category, p.badge, p.description,
+               ...(p.colorNames || []), ...(p.sizes || [])]
+    .filter(Boolean).join(" ").toLowerCase();
+  // Every word must appear somewhere, so "black tee" narrows rather than widens.
+  return q.toLowerCase().split(/\s+/).filter(Boolean).every(w => hay.includes(w));
+}
 
 /* ── CATEGORY FILTER ───────────────────────────────────────────────── */
 function shopFilter(cat, btn) {
@@ -45,6 +128,7 @@ function shopFilter(cat, btn) {
     const el = document.querySelector(`.sidebar-link[data-filter="${cat}"]`);
     if (el) el.classList.add("active");
   }
+  writeFiltersToUrl(true);
   renderShop();
   
   // Update URL without reload
@@ -65,6 +149,7 @@ function shopPriceFilter(range, btn) {
     const el = document.querySelector(`.sidebar-link[data-price="${range}"]`);
     if (el) el.classList.add("active");
   }
+  writeFiltersToUrl(true);
   renderShop();
 }
 
@@ -75,6 +160,7 @@ function shopSizeFilter(size, btn) {
   document.querySelectorAll(".sidebar-size").forEach(l => {
     l.classList.toggle("active", l.dataset.size === shopSize);
   });
+  writeFiltersToUrl(true);
   renderShop();
 }
 
@@ -85,6 +171,7 @@ function shopColorFilter(color, btn) {
   document.querySelectorAll(".sidebar-color").forEach(l => {
     l.classList.toggle("active", l.dataset.color === shopColor);
   });
+  writeFiltersToUrl(true);
   renderShop();
 }
 
@@ -92,12 +179,14 @@ function shopColorFilter(color, btn) {
 function shopSort(val) {
   shopSortBy = val;
   currentPage = 1;
+  writeFiltersToUrl(true);
   renderShop();
 }
 
 /* ── PAGINATION NAVIGATION ─────────────────────────────────────────── */
 function goToPage(p) {
   currentPage = p;
+  writeFiltersToUrl(true);
   renderShop();
   // Smooth scroll to top of shop main
   const target = document.querySelector(".shop-main");
@@ -108,6 +197,9 @@ function goToPage(p) {
 
 /* ── CLEAR ALL FILTERS ─────────────────────────────────────────────── */
 function clearAllFilters() {
+  shopQuery = "";
+  const box = document.getElementById("shop-search");
+  if (box) box.value = "";
   shopCategory = "all";
   shopPriceRange = "all";
   shopSize = "all";
@@ -125,6 +217,7 @@ function clearAllFilters() {
   const url = new URL(window.location);
   url.searchParams.delete("cat");
   history.replaceState(null, "", url);
+  writeFiltersToUrl(true);
 
   renderShop();
 }
@@ -157,7 +250,7 @@ function closeShopSidebar() {
 }
 
 /* ── RENDER SHOP & PAGINATION ──────────────────────────────────────── */
-function renderShop() {
+function renderShop(append) {
   renderShopCategories();
   let items = [...PRODUCTS];
 
@@ -167,6 +260,9 @@ function renderShop() {
   } else if (shopCategory !== "all") {
     items = items.filter(p => p.category === shopCategory);
   }
+
+  // 1b. Free-text search
+  if (shopQuery) items = items.filter(p => matchesQuery(p, shopQuery));
 
   // 2. Price filter
   if (shopPriceRange === "under50") {
@@ -209,9 +305,9 @@ function renderShop() {
   if (currentPage > totalPages) currentPage = totalPages;
   if (currentPage < 1) currentPage = 1;
 
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
-  const pageItems = items.slice(startIndex, endIndex);
+  lastFilteredCount = totalItems;
+  const endIndex = Math.min(currentPage * itemsPerPage, totalItems);
+  const pageItems = items.slice(0, endIndex);
 
   // Update Page Title and Counter
   const foundCat = (typeof CATEGORIES !== "undefined") ? CATEGORIES.find(c => c.id === shopCategory) : null;
@@ -226,7 +322,9 @@ function renderShop() {
     if (totalItems === 0) {
       countEl.textContent = "0 products found";
     } else {
-      countEl.textContent = `Showing ${startIndex + 1}–${endIndex} of ${totalItems} product${totalItems !== 1 ? 's' : ''}`;
+      countEl.textContent = shopQuery
+        ? `${totalItems} result${totalItems !== 1 ? "s" : ""} for “${shopQuery}”`
+        : `${totalItems} product${totalItems !== 1 ? "s" : ""}`;
     }
   }
 
@@ -243,9 +341,13 @@ function renderShop() {
   if (totalItems === 0) {
     grid.innerHTML = `
       <div class="empty-state" style="grid-column:1/-1">
-        <h3>No products found</h3>
-        <p>No pieces match the selected combination of filters.</p>
-        <button class="btn btn-dark" onclick="clearAllFilters()">Reset All Filters</button>
+        <h3>${shopQuery ? "Nothing matches “" + esc(shopQuery) + "”" : "No products found"}</h3>
+        <p>${shopQuery
+            ? "Try a shorter search, or browse the full collection."
+            : "No pieces match that combination of filters."}</p>
+        <button class="btn btn-dark" onclick="clearAllFilters()">
+          ${shopQuery ? "Clear search &amp; filters" : "Reset all filters"}
+        </button>
       </div>`;
     renderPagination(0, 1);
     return;
@@ -337,46 +439,30 @@ function renderPagination(totalPages, activePage) {
   const container = document.getElementById("shop-pagination");
   if (!container) return;
 
-  if (totalPages <= 1) {
-    container.innerHTML = "";
+  const total = lastFilteredCount;
+  const shown = Math.min(activePage * itemsPerPage, total);
+
+  if (totalPages <= 1 || shown >= total) {
+    container.innerHTML = total > itemsPerPage
+      ? `<div class="load-more-wrap"><span class="load-more-count">Showing all ${total} products</span></div>`
+      : "";
     return;
   }
 
-  let buttonsHtml = "";
-
-  // Prev button
-  buttonsHtml += `
-    <button class="page-btn page-arrow" ${activePage <= 1 ? "disabled" : `onclick="goToPage(${activePage - 1})"`} aria-label="Previous page">
-      ‹ Prev
-    </button>
-  `;
-
-  // Page numbers
-  for (let i = 1; i <= totalPages; i++) {
-    buttonsHtml += `
-      <button class="page-btn ${i === activePage ? "active" : ""}" onclick="goToPage(${i})" aria-label="Page ${i}">
-        ${i}
-      </button>
-    `;
-  }
-
-  // Next button
-  buttonsHtml += `
-    <button class="page-btn page-arrow" ${activePage >= totalPages ? "disabled" : `onclick="goToPage(${activePage + 1})"`} aria-label="Next page">
-      Next ›
-    </button>
-  `;
-
   container.innerHTML = `
-    <div class="shop-pagination-wrap">
-      <div class="pagination-controls">
-        ${buttonsHtml}
-      </div>
-      <div class="pagination-info">
-        Page ${activePage} of ${totalPages}
-      </div>
-    </div>
-  `;
+    <div class="load-more-wrap">
+      <button class="load-more-btn" onclick="loadMore()">Load more</button>
+      <span class="load-more-count">Showing ${shown} of ${total} products</span>
+    </div>`;
+}
+
+function loadMore() {
+  currentPage += 1;
+  writeFiltersToUrl(false);
+  renderShop(true);
+  // Keep focus near where the new items appeared.
+  const btn = document.querySelector(".load-more-btn");
+  if (btn) btn.focus();
 }
 
 /* ── COUNTS ────────────────────────────────────────────────────────── */

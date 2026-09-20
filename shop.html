@@ -34,7 +34,7 @@
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600;700;800&display=swap"></noscript>
 
   <link rel="preconnect" href="https://cqcyxiqsxcuqikvbkcrs.supabase.co" crossorigin>
-  <link rel="stylesheet" href="css/style.css?v=69171a1d">
+  <link rel="stylesheet" href="css/style.css?v=a49596ce">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16x16.png">
@@ -226,7 +226,7 @@
         <div class="shop-header">
           <div class="shop-title-area">
             <h1 id="shop-page-title">All Products</h1>
-            <p class="product-count" id="shop-product-count">Showing 16 products</p>
+            <p class="product-count" id="shop-product-count">Loading products…</p>
           </div>
           <div class="shop-actions-bar">
             <button class="btn-filter-mobile" id="mobile-filter-btn" onclick="toggleShopSidebar()">
@@ -244,6 +244,14 @@
               </select>
             </div>
           </div>
+        </div>
+
+        <!-- Search within the shop -->
+        <div class="shop-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <label for="shop-search" class="sr-only">Search products</label>
+          <input type="search" id="shop-search" placeholder="Search by name, colour or material…" autocomplete="off">
+          <button type="button" id="shop-search-clear" aria-label="Clear search">✕</button>
         </div>
 
         <!-- Active Filter Pills Bar -->
@@ -442,10 +450,10 @@
 
 <!-- ═══ JavaScript ═══ -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="js/db.js?v=69171a1d"></script>
-<script src="js/products.js?v=69171a1d"></script>
-<script src="js/app.js?v=69171a1d"></script>
-<script src="js/shop.js?v=69171a1d"></script>
+<script src="js/db.js?v=a49596ce"></script>
+<script src="js/products.js?v=a49596ce"></script>
+<script src="js/app.js?v=a49596ce"></script>
+<script src="js/shop.js?v=a49596ce"></script>
 
 <script type="application/ld+json">
 {
