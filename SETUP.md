@@ -1,8 +1,8 @@
 # Dakar Dapper — Setup & Operations
 
-Everything in the code is done. There are **four things only you can do**, because they
+Everything in the code is done. There are **seven things only you can do**, because they
 need access to your Supabase account. Work through them in order; the whole thing takes
-about fifteen minutes.
+about twenty-five minutes. Steps 1–3 are done already if you followed the last round.
 
 ---
 
@@ -86,6 +86,84 @@ but treat it as a prompt to check the rest:
 
 ---
 
+## Step 5 — Run migrations 002 and 003
+
+Same place: **SQL Editor → New query → paste → Run**, one at a time.
+
+- `supabase/002_product_pages.sql` — product URL slugs and photo galleries.
+- `supabase/003_reviews_alerts_sizes.sql` — reviews, restock alerts, size
+  charts, and the order email queue.
+
+**003 also deletes the invented ratings** the first build shipped (every
+product showed something like "4.9 · 38 reviews" that nobody wrote). After it
+runs, products show *"Be the first to review"* until real customers write one.
+
+---
+
+## Step 6 — Turn on order confirmation emails
+
+Every order already queues a confirmation. This deploys the thing that sends it.
+
+**1. Get a sender.** Sign up at [resend.com](https://resend.com) (free tier covers
+3,000 emails a month). To send from your own address you must verify a domain —
+until you own one, use their `onboarding@resend.dev` sender, which only delivers
+to the address you signed up with. Good enough to test; swap it when your domain
+is live.
+
+**2. Install the Supabase CLI and deploy:**
+
+```bash
+npm install -g supabase
+supabase login
+supabase link --project-ref cqcyxiqsxcuqikvbkcrs
+supabase functions deploy send-emails
+```
+
+**3. Set the secrets** (these never reach the browser):
+
+```bash
+supabase secrets set RESEND_API_KEY=re_your_key_here
+supabase secrets set FROM_EMAIL="Dakar Dapper <onboarding@resend.dev>"
+supabase secrets set STORE_URL="https://dakar-dapper.vercel.app"
+supabase secrets set WHATSAPP_NUMBER="2349019603621"
+```
+
+**4. Run it every minute.** Supabase dashboard → **Integrations → Cron** → new job:
+
+```sql
+select net.http_post(
+  url     := 'https://cqcyxiqsxcuqikvbkcrs.supabase.co/functions/v1/send-emails',
+  headers := '{"Authorization":"Bearer YOUR_SERVICE_ROLE_KEY","Content-Type":"application/json"}'::jsonb
+);
+```
+
+Your service role key is in **Settings → API**. It belongs only here and in the
+Supabase dashboard — never in any file in this project.
+
+**5. Check it.** Place a test order, then look at **Admin → More → Order emails**.
+You want *Waiting: 0, Sent: 1*. If messages pile up in Waiting, the function is
+not deployed or the cron job is not firing.
+
+> Confirmations go to whatever address the customer typed at checkout. For a
+> signed-in customer that address is already verified by Supabase Auth, so those
+> are the most reliable.
+
+---
+
+## Step 7 — Reviews and restock alerts
+
+Nothing to configure; both are live once 003 has run.
+
+- **Reviews** — customers write them on the product page. They land in
+  **Admin → Reviews** marked *Waiting*. Tap **Publish** and it appears on the
+  site; the product's star rating recalculates itself. A review whose email
+  matches a real order is automatically badged **Verified purchase**.
+- **Restock alerts** — a sold-out product shows a "Tell me when it is back"
+  form. The waiting list appears at the bottom of **Admin → Reviews**. Restock
+  the product and an **Email them** button appears; one tap queues the emails.
+
+---
+
 ## Using the admin
 
 Open `admin.html`, or tap **Manage** in the website footer.
@@ -99,8 +177,14 @@ call them with one tap, and move it through Pending → Confirmed → Packed →
 Delivered. New orders arrive live with a notification, even while you have the page open.
 
 **Products** — tap **−** or **+** on any product to change stock; it saves by itself. The
-**+** button at the bottom right adds a new product: photo, price, sizes, colours, the lot.
+**Add** button adds a new product: as many photos as you like, price, sizes, colours,
+the lot. Photos are shrunk on your phone before uploading, so a 6MB camera shot
+becomes about 150KB. The first photo shows in the shop grid; the rest become the
+gallery on the product page, and you can promote any photo to main with the ★.
 Everything you save appears on the live website immediately.
+
+**Reviews** — approve or hide what customers write, and see who is waiting for a
+sold-out item to come back.
 
 **More** — categories, the words on your homepage, delivery threshold, your newsletter list
 (exportable as CSV), and a security log of every admin action.
