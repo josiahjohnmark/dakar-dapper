@@ -526,7 +526,49 @@ function saveStoredContent(content) {
     SITE_CONTENT = content;
     PHONE = content.phone || "2349019603621";
     PHONE_DISPLAY = content.phoneDisplay || "09019603621";
+    if (typeof dbSaveContent === "function") {
+      dbSaveContent(content);
+    }
   } catch (e) {}
+}
+
+// ── CLOUD DATABASE SYNC ─────────────────────────────────────────────
+async function syncFromSupabase() {
+  try {
+    if (typeof dbFetchCategories === "function") {
+      const cloudCats = await dbFetchCategories();
+      if (cloudCats && cloudCats.length > 0) {
+        CATEGORIES = cloudCats;
+        localStorage.setItem("dd_categories_data", JSON.stringify(cloudCats));
+      }
+    }
+
+    if (typeof dbFetchProducts === "function") {
+      const cloudProducts = await dbFetchProducts();
+      if (cloudProducts && cloudProducts.length > 0) {
+        PRODUCTS = cloudProducts;
+        localStorage.setItem("dd_products_data", JSON.stringify(cloudProducts));
+      }
+    }
+
+    if (typeof dbFetchContent === "function") {
+      const cloudContent = await dbFetchContent();
+      if (cloudContent) {
+        SITE_CONTENT = { ...DEFAULT_CONTENT, ...cloudContent };
+        PHONE = SITE_CONTENT.phone || "2349019603621";
+        PHONE_DISPLAY = SITE_CONTENT.phoneDisplay || "09019603621";
+        localStorage.setItem("dd_site_content", JSON.stringify(SITE_CONTENT));
+      }
+    }
+
+    // Refresh active views if UI methods are present
+    if (typeof hydratePageContent === "function") hydratePageContent();
+    if (typeof renderCategoryFilters === "function") renderCategoryFilters();
+    if (typeof renderProducts === "function") renderProducts();
+    if (typeof renderShop === "function") renderShop();
+  } catch (err) {
+    console.warn("Dakar Dapper: Cloud sync completed with local cache fallback", err);
+  }
 }
 
 // ── ACTIVE APPLICATION STATE ─────────────────────────────────────────
@@ -539,3 +581,4 @@ let PHONE_DISPLAY = SITE_CONTENT.phoneDisplay || "09019603621";
 function formatPrice(n) {
   return "₦" + Number(n || 0).toLocaleString("en-NG");
 }
+

@@ -505,6 +505,9 @@ function quickRestock(id, qty = 5) {
   p.stock = (p.stock || 0) + qty;
   p.isOutOfStock = false;
   saveStoredProducts(PRODUCTS);
+  if (typeof dbSaveProduct === "function") {
+    dbSaveProduct(p);
+  }
   renderAdminProducts();
   triggerStorefrontUpdate();
   if (typeof showToast === "function") {
@@ -519,6 +522,9 @@ function deleteProduct(id) {
 
   PRODUCTS = PRODUCTS.filter(x => x.id !== id);
   saveStoredProducts(PRODUCTS);
+  if (typeof dbDeleteProduct === "function") {
+    dbDeleteProduct(id);
+  }
   renderAdminProducts();
   triggerStorefrontUpdate();
   if (typeof showToast === "function") {
@@ -655,6 +661,10 @@ function handleSaveProduct(e) {
   }
 
   saveStoredProducts(PRODUCTS);
+  const savedItem = editingProductId ? PRODUCTS.find(x => x.id === editingProductId) : PRODUCTS[0];
+  if (typeof dbSaveProduct === "function" && savedItem) {
+    dbSaveProduct(savedItem);
+  }
   closeProductEditor();
   renderAdminProducts();
   triggerStorefrontUpdate();
@@ -699,8 +709,12 @@ function handleAddCategory() {
     return;
   }
 
-  CATEGORIES.push({ id, name });
+  const newCat = { id, name };
+  CATEGORIES.push(newCat);
   saveStoredCategories(CATEGORIES);
+  if (typeof dbSaveCategory === "function") {
+    dbSaveCategory(newCat, CATEGORIES.length);
+  }
   input.value = "";
   renderAdminCategories();
   renderAdminProducts();
@@ -723,13 +737,19 @@ function handleDeleteCategory(id) {
     }
     // Reassign
     PRODUCTS.forEach(p => {
-      if (p.category === id) p.category = CATEGORIES[0].id;
+      if (p.category === id) {
+        p.category = CATEGORIES[0].id;
+        if (typeof dbSaveProduct === "function") dbSaveProduct(p);
+      }
     });
     saveStoredProducts(PRODUCTS);
   }
 
   CATEGORIES = CATEGORIES.filter(c => c.id !== id);
   saveStoredCategories(CATEGORIES);
+  if (typeof dbDeleteCategory === "function") {
+    dbDeleteCategory(id);
+  }
   renderAdminCategories();
   renderAdminProducts();
   triggerStorefrontUpdate();
@@ -779,6 +799,9 @@ function handleSaveContent() {
   };
 
   saveStoredContent(SITE_CONTENT);
+  if (typeof dbSaveContent === "function") {
+    dbSaveContent(SITE_CONTENT);
+  }
   triggerStorefrontUpdate();
 
   if (typeof showToast === "function") {

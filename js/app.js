@@ -31,6 +31,11 @@ document.addEventListener("DOMContentLoaded", () => {
   renderCart();
   renderWishlist();
   initNewsletterTriggers();
+
+  // Pull live data from Supabase cloud database
+  if (typeof syncFromSupabase === "function") {
+    syncFromSupabase();
+  }
 });
 
 /* ── PERSIST ───────────────────────────────────────────────────────── */
@@ -632,8 +637,73 @@ function placeOrder() {
       if (p.stock <= 0) {
         p.isOutOfStock = true;
       }
+      if (typeof dbDecrementStock === "function") {
+        dbDecrementStock(item.id, item.qty);
+      }
     }
   });
+
+  // Calculate totals and gather customer info
+  const subtotal = cart.reduce((s, item) => {
+    const p = PRODUCTS.find(x => x.id === item.id);
+    return s + (p ? p.price * item.qty : 0);
+  }, 0);
+  const shipping = subtotal >= 150000 ? 0 : 5000;
+  const total = subtotal + shipping;
+
+  const form = document.querySelector("#checkout-content .form-grid");
+  const inputs = form ? form.querySelectorAll("input, select") : [];
+  let customerName = "Customer";
+  let customerPhone = "";
+  let customerAddr = "";
+  let customerCity = "";
+  let customerState = "";
+
+  inputs.forEach(input => {
+    const ph = (input.placeholder || "").toLowerCase();
+    const type = (input.type || "").toLowerCase();
+    const val = (input.value || "").trim();
+    if (ph.includes("first") || ph.includes("last") || ph.includes("name")) {
+      customerName = customerName === "Customer" ? val : customerName + " " + val;
+    } else if (type === "tel" || ph.includes("phone")) {
+      customerPhone = val;
+    } else if (ph.includes("address")) {
+      customerAddr = val;
+    } else if (ph.includes("city")) {
+      customerCity = val;
+    } else if (ph.includes("state")) {
+      customerState = val;
+    }
+  });
+
+  const orderData = {
+    name: customerName,
+    email: userEmailFromCheckout,
+    phone: customerPhone,
+    address: customerAddr,
+    city: customerCity,
+    state: customerState,
+    items: cart.map(i => {
+      const p = PRODUCTS.find(x => x.id === i.id);
+      return {
+        id: i.id,
+        name: p ? p.name : "Product",
+        price: p ? p.price : 0,
+        size: i.size,
+        color: i.color,
+        qty: i.qty
+      };
+    }),
+    subtotal,
+    shipping,
+    total
+  };
+
+  // Push order to Supabase
+  if (typeof dbCreateOrder === "function") {
+    dbCreateOrder(orderData);
+  }
+
   if (typeof saveStoredProducts === "function") {
     saveStoredProducts(PRODUCTS);
   }
@@ -795,6 +865,9 @@ function handleNewsletter(e) {
   if (email) {
     localStorage.setItem("dd_subscribed", "true");
     sessionStorage.setItem("dd_preshop_popup_shown", "true");
+    if (typeof dbAddSubscriber === "function") {
+      dbAddSubscriber(email, "footer");
+    }
     showToast("Welcome to the Dakar Dapper family! 💌");
     form.reset();
   }
@@ -921,6 +994,10 @@ function handleModalNewsletter(e) {
 
   localStorage.setItem("dd_subscribed", "true");
   sessionStorage.setItem("dd_preshop_popup_shown", "true");
+
+  if (typeof dbAddSubscriber === "function") {
+    dbAddSubscriber(email, currentNlModalType || "popup");
+  }
 
   showToast("Welcome to the Dakar Dapper family! 💌");
 
