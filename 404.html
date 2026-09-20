@@ -41,6 +41,19 @@
   </style>
 </head>
 <body>
+  <script>
+    // Belt and braces: if the /product/<slug> rewrite ever fails to resolve,
+    // send the visitor to the product page by query string instead of
+    // showing them a dead end.
+    (function () {
+      var m = location.pathname.match(/^\/product\/([^/?#]+)\/?$/);
+      if (m) {
+        location.replace("/product.html?slug=" + encodeURIComponent(
+          decodeURIComponent(m[1])));
+      }
+    })();
+  </script>
+
   <main>
     <div class="mark"><img src="assets/dakar-dapper-dd.png" alt="Dakar Dapper"></div>
     <div class="code">Error 404</div>
