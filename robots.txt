@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /admin.html
 
-Sitemap: https://dakardapper.com/sitemap.xml
+Sitemap: https://dakar-dapper.vercel.app/sitemap.xml

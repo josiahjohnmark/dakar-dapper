@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="css/admin.css?v=a49596ce">
+  <link rel="stylesheet" href="css/admin.css?v=e60e8e70">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 </head>
@@ -154,6 +154,24 @@
       <div class="prod-list" id="products-list"></div>
     </section>
 
+    <!-- ══ REVIEWS ══ -->
+    <section class="a-pane" id="pane-reviews">
+      <div class="a-pane-head">
+        <h2>Reviews</h2>
+        <p id="reviews-count-line">Nothing is published until you approve it.</p>
+      </div>
+      <div class="a-toolbar" id="review-filters"></div>
+      <div id="reviews-list"></div>
+
+      <div class="a-card" style="margin-top:22px">
+        <div class="a-card-head">
+          <h3>Waiting for a restock</h3>
+          <span class="sub">Customers who asked to be told</span>
+        </div>
+        <div id="stock-alerts-list"></div>
+      </div>
+    </section>
+
     <!-- ══ MORE ══ -->
     <section class="a-pane" id="pane-more">
       <div class="a-pane-head">
@@ -195,6 +213,13 @@
       </div>
 
       <div class="a-card">
+        <div class="a-card-head"><h3>Order emails</h3>
+          <span class="sub">Confirmation delivery</span>
+        </div>
+        <div id="email-status"></div>
+      </div>
+
+      <div class="a-card">
         <div class="a-card-head"><h3>Account</h3></div>
         <div class="a-list-row">
           <div class="a-list-row-main">
@@ -225,6 +250,11 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></svg>
       <span>Products</span>
     </button>
+    <button class="a-tab" data-pane="reviews">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.9 6.3 6.6.7-4.9 4.5 1.4 6.5L12 16.8 6 20l1.4-6.5L2.5 9l6.6-.7z"/></svg>
+      <span>Reviews</span>
+      <span class="tab-badge" id="reviews-badge" hidden>0</span>
+    </button>
     <button class="a-tab" data-pane="more">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       <span>More</span>
@@ -250,8 +280,8 @@
 <div class="a-toast-box" id="toast-box" role="status" aria-live="polite"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="js/image-optimizer.js?v=a49596ce"></script>
-<script src="js/db.js?v=a49596ce"></script>
-<script src="js/admin.js?v=a49596ce"></script>
+<script src="js/image-optimizer.js?v=e60e8e70"></script>
+<script src="js/db.js?v=e60e8e70"></script>
+<script src="js/admin.js?v=e60e8e70"></script>
 </body>
 </html>

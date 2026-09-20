@@ -166,6 +166,57 @@ async function dbFetchProductBySlug(slug) {
   } catch { return null; }
 }
 
+/* ── Reviews ─────────────────────────────────────────────────────────── */
+
+async function dbFetchReviews(productId) {
+  if (!supabaseClient) return { summary: { count: 0, average: 0 }, items: [] };
+  try {
+    const { data, error } = await supabaseClient.rpc("product_reviews", { p_product_id: productId });
+    if (error || !data) return { summary: { count: 0, average: 0 }, items: [] };
+    return {
+      summary: data.summary || { count: 0, average: 0 },
+      items: Array.isArray(data.items) ? data.items : []
+    };
+  } catch { return { summary: { count: 0, average: 0 }, items: [] }; }
+}
+
+async function dbSubmitReview(review) {
+  if (!supabaseClient) return { ok: false, message: "We could not reach the store." };
+  try {
+    const { data, error } = await supabaseClient.rpc("submit_review", { payload: review });
+    if (error) return { ok: false, message: error.message || "Could not submit your review." };
+    return { ok: true, verified: !!(data && data.verified) };
+  } catch {
+    return { ok: false, message: "Network error. Please try again." };
+  }
+}
+
+/* ── Back-in-stock alerts ────────────────────────────────────────────── */
+
+async function dbRequestStockAlert(productId, email, size) {
+  if (!supabaseClient) return false;
+  try {
+    const { data, error } = await supabaseClient.rpc("request_stock_alert", {
+      p_product_id: productId, p_email: email, p_size: size || null
+    });
+    return !error && data !== false;
+  } catch { return false; }
+}
+
+/* ── Size charts ─────────────────────────────────────────────────────── */
+
+async function dbFetchSizeCharts() {
+  if (!supabaseClient) return {};
+  try {
+    const { data, error } = await supabaseClient
+      .from("dd_size_charts").select("category_id,unit,columns,rows,note");
+    if (error || !data) return {};
+    const byCategory = {};
+    data.forEach(c => { byCategory[c.category_id] = c; });
+    return byCategory;
+  } catch { return {}; }
+}
+
 async function dbFetchShippingRates() {
   if (!supabaseClient) return [];
   try {
@@ -407,6 +458,90 @@ async function dbUpdateOrderPayment(id, payment_status) {
     .update({ payment_status }).eq("id", id);
   if (error) return { ok: false, message: error.message };
   dbLog("order.payment", "order", String(id), { payment_status });
+  return { ok: true };
+}
+
+/* ── Admin: review moderation ────────────────────────────────────────── */
+
+async function dbFetchReviewsForAdmin({ status = "pending", limit = 100 } = {}) {
+  if (!supabaseClient) return [];
+  let q = supabaseClient.from("dd_reviews")
+    .select("*, dd_products(name,image)")
+    .order("created_at", { ascending: false }).limit(limit);
+  if (status !== "all") q = q.eq("status", status);
+  const { data, error } = await q;
+  if (error) { console.warn("reviews:", error.message); return []; }
+  return data || [];
+}
+
+async function dbSetReviewStatus(id, status) {
+  if (!supabaseClient) return { ok: false, message: "Offline." };
+  const { error } = await supabaseClient.from("dd_reviews").update({ status }).eq("id", id);
+  if (error) return { ok: false, message: error.message };
+  dbLog("review." + status, "review", String(id));
+  return { ok: true };
+}
+
+async function dbDeleteReview(id) {
+  if (!supabaseClient) return { ok: false, message: "Offline." };
+  const { error } = await supabaseClient.from("dd_reviews").delete().eq("id", id);
+  if (error) return { ok: false, message: error.message };
+  dbLog("review.delete", "review", String(id));
+  return { ok: true };
+}
+
+/* ── Admin: who is waiting for a restock ─────────────────────────────── */
+
+async function dbFetchStockAlerts() {
+  if (!supabaseClient) return [];
+  const { data, error } = await supabaseClient.rpc("pending_stock_alerts");
+  if (error) { console.warn("stock alerts:", error.message); return []; }
+  return Array.isArray(data) ? data : [];
+}
+
+async function dbMarkAlertsNotified(productId) {
+  if (!supabaseClient) return { ok: false, message: "Offline." };
+  const { data, error } = await supabaseClient.rpc("mark_alerts_notified", { p_product_id: productId });
+  if (error) return { ok: false, message: error.message };
+  return { ok: true, count: data };
+}
+
+/* Queue a back-in-stock email for everyone waiting on this product. */
+async function dbQueueBackInStock(product, people) {
+  if (!supabaseClient || !people?.length) return { ok: false, message: "Nobody waiting." };
+  const rows = people.map(person => ({
+    to_email: person.email,
+    template: "back_in_stock",
+    payload: {
+      product_name: product.product_name,
+      product_image: product.product_image,
+      slug: product.slug || ""
+    }
+  }));
+  const { error } = await supabaseClient.from("dd_email_queue").insert(rows);
+  if (error) return { ok: false, message: error.message };
+  dbLog("alerts.queued", "product", String(product.product_id), { count: rows.length });
+  return { ok: true, count: rows.length };
+}
+
+async function dbEmailQueueSummary() {
+  if (!supabaseClient) return null;
+  const { data, error } = await supabaseClient.rpc("email_queue_summary");
+  return error ? null : data;
+}
+
+async function dbSaveSizeChart(chart) {
+  if (!supabaseClient) return { ok: false, message: "Offline." };
+  const { error } = await supabaseClient.from("dd_size_charts").upsert({
+    category_id: chart.category_id,
+    unit: chart.unit || "cm",
+    columns: chart.columns,
+    rows: chart.rows,
+    note: chart.note || null,
+    updated_at: new Date().toISOString()
+  }, { onConflict: "category_id" });
+  if (error) return { ok: false, message: error.message };
+  dbLog("sizechart.save", "category", chart.category_id);
   return { ok: true };
 }
 

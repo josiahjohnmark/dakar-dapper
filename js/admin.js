@@ -33,6 +33,9 @@ const A = {
   subscribers: [],
   audit: [],
   shipping: [],
+  reviews: [],
+  reviewFilter: "pending",
+  stockAlerts: [],
   orderFilter: "all",
   orderSearch: "",
   productFilter: "all",
@@ -199,6 +202,7 @@ const PANE_TITLES = {
   home: ["Dashboard", "Dakar Dapper"],
   orders: ["Orders", "Fulfilment"],
   products: ["Products", "Inventory"],
+  reviews: ["Reviews", "Moderation"],
   more: ["Settings", "Store"]
 };
 
@@ -236,11 +240,13 @@ function toggleTheme() {
    ══════════════════════════════════════════════════════════════════════ */
 
 async function loadAll() {
-  const [products, categories, content, orders, stats, subs, audit, shipping] =
+  const [products, categories, content, orders, stats, subs, audit, shipping,
+         reviews, stockAlerts] =
     await Promise.all([
       dbFetchProducts(), dbFetchCategories(), dbFetchContent(),
       dbFetchOrders({ limit: 200 }), dbAdminStats(),
-      dbFetchSubscribers(), dbFetchAuditLog(25), dbFetchShippingRates()
+      dbFetchSubscribers(), dbFetchAuditLog(25), dbFetchShippingRates(),
+      dbFetchReviewsForAdmin({ status: "all", limit: 200 }), dbFetchStockAlerts()
     ]);
 
   A.products = products || [];
@@ -251,6 +257,8 @@ async function loadAll() {
   A.subscribers = subs || [];
   A.audit = audit || [];
   A.shipping = shipping || [];
+  A.reviews = reviews || [];
+  A.stockAlerts = stockAlerts || [];
   A.orders.forEach(o => A.seenOrderIds.add(o.id));
 
   renderDashboard();
@@ -263,6 +271,10 @@ async function loadAll() {
   renderShippingForm();
   renderSubscribers();
   renderAudit();
+  renderReviewFilters();
+  renderReviewsList();
+  renderStockAlerts();
+  refreshEmailStatus();
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -915,9 +927,9 @@ function openProductEditor(id) {
     <div class="a-error" id="editor-error" hidden></div>
 
     <div class="a-field">
-      <label>Photo</label>
+      <label>Photos</label>
       <div id="image-slot"></div>
-      <input type="file" id="image-file" accept="image/jpeg,image/png,image/webp" hidden>
+      <input type="file" id="image-file" accept="image/jpeg,image/png,image/webp" multiple hidden>
     </div>
 
     <div class="a-field">
@@ -1025,71 +1037,151 @@ function openProductEditor(id) {
   updateDiscountHint();
 }
 
-function renderImageSlot() {
-  const slot = document.getElementById("image-slot");
-  const img = A.editing.image;
+/* ── Product photo gallery ─────────────────────────────────────────────
+   The first photo is the one customers see in the grid; the rest become the
+   gallery on the product page. Every upload is shrunk on this device first,
+   so adding six photos does not make the storefront heavy. */
 
-  slot.innerHTML = img ? `
-    <div class="img-preview">
-      <img src="${escUrl(img)}" alt="">
-      <button class="img-preview-x" id="img-remove" aria-label="Remove photo">✕</button>
-    </div>` : `
-    <div class="img-drop" id="img-drop" tabindex="0" role="button">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5M12 3v13"/></svg>
-      <p>Tap to add a photo</p>
-      <span>or drag an image here · JPG, PNG or WebP</span>
-    </div>`;
-
-  const drop = document.getElementById("img-drop");
-  const fileInput = document.getElementById("image-file");
-
-  if (drop) {
-    drop.addEventListener("click", () => fileInput.click());
-    drop.addEventListener("keydown", e => {
-      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInput.click(); }
-    });
-    ["dragenter", "dragover"].forEach(ev =>
-      drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("dragging"); }));
-    ["dragleave", "drop"].forEach(ev =>
-      drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("dragging"); }));
-    drop.addEventListener("drop", e => {
-      const file = e.dataTransfer?.files?.[0];
-      if (file) uploadImage(file);
-    });
-  }
-
-  const remove = document.getElementById("img-remove");
-  if (remove) remove.addEventListener("click", () => {
-    A.editing.image = "";
-    renderImageSlot();
-  });
-
-  fileInput.onchange = () => {
-    if (fileInput.files?.[0]) uploadImage(fileInput.files[0]);
-  };
+function editorPhotos() {
+  const e = A.editing;
+  const list = [];
+  if (e.image) list.push(e.image);
+  (e.images || []).forEach(u => { if (u && u !== e.image) list.push(u); });
+  return list;
 }
 
-async function uploadImage(file) {
-  const slot = document.getElementById("image-slot");
-  const setStatus = msg => {
-    slot.innerHTML = `<div class="img-preview"><div class="img-uploading">${esc(msg)}</div></div>`;
-  };
-  setStatus("Preparing…");
+function setEditorPhotos(list) {
+  A.editing.image = list[0] || "";
+  A.editing.images = list.slice(1);
+  if (!list.length) A.editing.thumb = "";
+  renderImageSlot();
+}
 
-  const res = await dbUploadProductImage(file, setStatus);
-  if (!res.ok) {
-    editorError(res.message + " — if the bucket is missing, create a public bucket named “products” in Supabase Storage.");
-    renderImageSlot();
-    return;
+function renderImageSlot() {
+  const slot = document.getElementById("image-slot");
+  if (!slot) return;
+  const photos = editorPhotos();
+
+  slot.innerHTML = `
+    <div class="photo-grid" id="photo-grid">
+      ${photos.map((src, i) => `
+        <figure class="photo-tile${i === 0 ? " is-main" : ""}" data-i="${i}">
+          <img src="${escUrl(src)}" alt="" loading="lazy">
+          ${i === 0 ? `<figcaption class="photo-main-tag">Main</figcaption>` : ""}
+          <div class="photo-tile-actions">
+            ${i > 0 ? `<button type="button" class="photo-act" data-make-main="${i}"
+                          title="Use as main photo" aria-label="Use as main photo">&#9733;</button>` : ""}
+            <button type="button" class="photo-act danger" data-remove="${i}"
+                    title="Remove photo" aria-label="Remove photo">&#10005;</button>
+          </div>
+        </figure>`).join("")}
+
+      <button type="button" class="photo-add" id="photo-add">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        <span>${photos.length ? "Add photo" : "Add photos"}</span>
+      </button>
+    </div>
+    <p class="photo-hint">
+      ${photos.length
+        ? `${photos.length} photo${photos.length === 1 ? "" : "s"} &middot; the first one shows in the shop grid`
+        : "Add as many as you like &mdash; the first becomes the main photo."}
+      Large photos are shrunk automatically.
+    </p>
+    <div class="photo-progress" id="photo-progress" hidden></div>`;
+
+  bindPhotoGrid();
+}
+
+function bindPhotoGrid() {
+  const fileInput = document.getElementById("image-file");
+  const addBtn = document.getElementById("photo-add");
+  const grid = document.getElementById("photo-grid");
+
+  if (addBtn) {
+    addBtn.addEventListener("click", () => fileInput.click());
+    ["dragenter", "dragover"].forEach(ev =>
+      addBtn.addEventListener(ev, e => { e.preventDefault(); addBtn.classList.add("dragging"); }));
+    ["dragleave", "drop"].forEach(ev =>
+      addBtn.addEventListener(ev, e => { e.preventDefault(); addBtn.classList.remove("dragging"); }));
   }
 
-  A.editing.image = res.url;
-  A.editing.thumb = res.thumbUrl || "";
-  renderImageSlot();
+  if (grid) {
+    ["dragenter", "dragover"].forEach(ev =>
+      grid.addEventListener(ev, e => { e.preventDefault(); grid.classList.add("dragging"); }));
+    ["dragleave"].forEach(ev =>
+      grid.addEventListener(ev, e => { e.preventDefault(); grid.classList.remove("dragging"); }));
+    grid.addEventListener("drop", e => {
+      e.preventDefault();
+      grid.classList.remove("dragging");
+      const files = Array.from(e.dataTransfer?.files || []);
+      if (files.length) uploadPhotos(files);
+    });
+  }
 
-  toast(res.saved > 0
-    ? `Photo uploaded — ${formatBytes(res.before)} shrunk to ${formatBytes(res.after)} (${res.saved}% smaller)`
-    : "Photo uploaded");
+  document.querySelectorAll("[data-remove]").forEach(btn =>
+    btn.addEventListener("click", () => {
+      const photos = editorPhotos();
+      photos.splice(Number(btn.dataset.remove), 1);
+      setEditorPhotos(photos);
+    }));
+
+  document.querySelectorAll("[data-make-main]").forEach(btn =>
+    btn.addEventListener("click", () => {
+      const photos = editorPhotos();
+      const [picked] = photos.splice(Number(btn.dataset.makeMain), 1);
+      setEditorPhotos([picked, ...photos]);
+      toast("Main photo updated");
+    }));
+
+  if (fileInput) {
+    fileInput.onchange = () => {
+      const files = Array.from(fileInput.files || []);
+      if (files.length) uploadPhotos(files);
+      fileInput.value = "";
+    };
+  }
+}
+
+async function uploadPhotos(files) {
+  const progress = document.getElementById("photo-progress");
+  const show = msg => {
+    if (!progress) return;
+    progress.hidden = false;
+    progress.textContent = msg;
+  };
+
+  let savedBytes = 0;
+  let added = 0;
+  const photos = editorPhotos();
+
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    const label = files.length > 1 ? ` (${i + 1} of ${files.length})` : "";
+
+    const res = await dbUploadProductImage(file, s => show(s + label));
+    if (!res.ok) {
+      show("");
+      if (progress) progress.hidden = true;
+      editorError(res.message +
+        " — if the bucket is missing, create a public bucket named “products” in Supabase Storage.");
+      break;
+    }
+
+    photos.push(res.url);
+    // The thumbnail belongs to the main photo only.
+    if (photos.length === 1 && res.thumbUrl) A.editing.thumb = res.thumbUrl;
+    savedBytes += Math.max(0, res.before - res.after);
+    added++;
+  }
+
+  if (progress) progress.hidden = true;
+  setEditorPhotos(photos);
+
+  if (added) {
+    toast(savedBytes > 0
+      ? `${added} photo${added === 1 ? "" : "s"} added — ${formatBytes(savedBytes)} saved by optimising`
+      : `${added} photo${added === 1 ? "" : "s"} added`);
+  }
 }
 
 function renderChipEditors() {
@@ -1559,4 +1651,243 @@ function toast(msg) {
     el.classList.add("leaving");
     setTimeout(() => el.remove(), 260);
   }, 3200);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   REVIEWS — moderation
+   Nothing a customer writes appears on the site until it is approved here.
+   ══════════════════════════════════════════════════════════════════════ */
+
+function renderReviewFilters() {
+  const counts = {
+    pending: A.reviews.filter(r => r.status === "pending").length,
+    approved: A.reviews.filter(r => r.status === "approved").length,
+    rejected: A.reviews.filter(r => r.status === "rejected").length
+  };
+  counts.all = A.reviews.length;
+
+  const opts = [
+    { id: "pending", label: "Waiting" },
+    { id: "approved", label: "Published" },
+    { id: "rejected", label: "Hidden" },
+    { id: "all", label: "All" }
+  ];
+
+  document.getElementById("review-filters").innerHTML = opts.map(o => `
+    <button class="a-chip${A.reviewFilter === o.id ? " active" : ""}" data-rfilter="${esc(o.id)}">
+      ${esc(o.label)} <span class="n">${counts[o.id] || 0}</span>
+    </button>`).join("");
+
+  document.querySelectorAll("[data-rfilter]").forEach(chip =>
+    chip.addEventListener("click", () => {
+      A.reviewFilter = chip.dataset.rfilter;
+      renderReviewFilters();
+      renderReviewsList();
+    }));
+
+  const badge = document.getElementById("reviews-badge");
+  if (badge) {
+    badge.textContent = counts.pending;
+    badge.hidden = counts.pending === 0;
+  }
+
+  const line = document.getElementById("reviews-count-line");
+  if (line) {
+    line.textContent = counts.pending
+      ? `${counts.pending} waiting for your decision`
+      : "Nothing is waiting. New reviews appear here first.";
+  }
+}
+
+function reviewStars(n) {
+  return `<span class="rev-stars" aria-label="${n} out of 5">` +
+    [1,2,3,4,5].map(i => `<span class="${i <= n ? "on" : ""}">★</span>`).join("") + `</span>`;
+}
+
+function renderReviewsList() {
+  const mount = document.getElementById("reviews-list");
+  const list = A.reviewFilter === "all"
+    ? A.reviews
+    : A.reviews.filter(r => r.status === A.reviewFilter);
+
+  if (!list.length) {
+    mount.innerHTML = `<div class="a-empty">
+      <div class="a-empty-mark">☆</div>
+      <h4>Nothing here</h4>
+      <p>${A.reviews.length ? "No reviews with that status." : "Customer reviews will appear here for approval."}</p>
+    </div>`;
+    return;
+  }
+
+  mount.innerHTML = list.map(r => {
+    const product = r.dd_products || {};
+    return `
+    <div class="a-card rev-card" data-review="${esc(r.id)}">
+      <div class="rev-top">
+        <div class="rev-product">
+          ${product.image ? `<img src="${escUrl(product.image)}" alt="" loading="lazy">` : ""}
+          <div>
+            <strong>${esc(product.name || "Product")}</strong>
+            <span>${esc(r.author_name)} &middot; ${esc(timeAgo(r.created_at))}</span>
+          </div>
+        </div>
+        <span class="st-chip st-${r.status === "approved" ? "delivered" : r.status === "rejected" ? "cancelled" : "pending"}">
+          <span class="ic" aria-hidden="true">${r.status === "approved" ? "✔" : r.status === "rejected" ? "✕" : "●"}</span>
+          ${r.status === "approved" ? "Published" : r.status === "rejected" ? "Hidden" : "Waiting"}
+        </span>
+      </div>
+
+      <div class="rev-body">
+        ${reviewStars(r.rating)}
+        ${r.verified ? `<span class="rev-verified">✓ Verified purchase</span>` : `<span class="rev-unverified">No matching order</span>`}
+        ${r.title ? `<h4>${esc(r.title)}</h4>` : ""}
+        <p>${esc(r.body)}</p>
+        <span class="rev-meta">
+          ${esc(r.author_email)}${r.size_bought ? ` &middot; size ${esc(r.size_bought)}` : ""}
+        </span>
+      </div>
+
+      <div class="rev-actions">
+        ${r.status !== "approved" ? `<button class="a-btn a-btn-primary a-btn-sm" data-approve="${esc(r.id)}">Publish</button>` : ""}
+        ${r.status !== "rejected" ? `<button class="a-btn a-btn-ghost a-btn-sm" data-reject="${esc(r.id)}">Hide</button>` : ""}
+        <button class="a-btn a-btn-danger a-btn-sm" data-delrev="${esc(r.id)}">Delete</button>
+      </div>
+    </div>`;
+  }).join("");
+
+  bindReviewActions();
+}
+
+function bindReviewActions() {
+  const setStatus = async (id, status, word) => {
+    const res = await dbSetReviewStatus(id, status);
+    if (!res.ok) return toast("Could not update: " + res.message);
+    const r = A.reviews.find(x => x.id === id);
+    if (r) r.status = status;
+    toast(word);
+    renderReviewFilters();
+    renderReviewsList();
+    loadProductsAfterReview();
+  };
+
+  document.querySelectorAll("[data-approve]").forEach(b =>
+    b.addEventListener("click", () => setStatus(Number(b.dataset.approve), "approved", "Review published")));
+  document.querySelectorAll("[data-reject]").forEach(b =>
+    b.addEventListener("click", () => setStatus(Number(b.dataset.reject), "rejected", "Review hidden")));
+
+  document.querySelectorAll("[data-delrev]").forEach(b =>
+    b.addEventListener("click", async () => {
+      const id = Number(b.dataset.delrev);
+      const res = await dbDeleteReview(id);
+      if (!res.ok) return toast("Could not delete: " + res.message);
+      A.reviews = A.reviews.filter(x => x.id !== id);
+      toast("Review deleted");
+      renderReviewFilters();
+      renderReviewsList();
+      loadProductsAfterReview();
+    }));
+}
+
+/* Publishing a review changes the product's average, so refresh the catalogue. */
+async function loadProductsAfterReview() {
+  A.products = (await dbFetchProducts()) || A.products;
+  renderProducts();
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   BACK-IN-STOCK WAITING LIST
+   ══════════════════════════════════════════════════════════════════════ */
+
+function renderStockAlerts() {
+  const mount = document.getElementById("stock-alerts-list");
+  if (!A.stockAlerts.length) {
+    mount.innerHTML = `<div class="a-empty"><p>Nobody is waiting on a restock right now.</p></div>`;
+    return;
+  }
+
+  mount.innerHTML = A.stockAlerts.map(a => `
+    <div class="alert-row" data-alert="${esc(a.product_id)}">
+      <div class="alert-main">
+        ${a.product_image ? `<img src="${escUrl(a.product_image)}" alt="" loading="lazy">` : ""}
+        <div>
+          <strong>${esc(a.product_name)}</strong>
+          <span>${esc(a.waiting)} waiting &middot; ${Number(a.stock) > 0
+            ? `<b class="in-stock">${esc(a.stock)} in stock now</b>`
+            : "still sold out"}</span>
+        </div>
+      </div>
+      ${Number(a.stock) > 0
+        ? `<button class="a-btn a-btn-gold a-btn-sm" data-notify="${esc(a.product_id)}">Email them</button>`
+        : `<button class="a-btn a-btn-ghost a-btn-sm" data-seewho="${esc(a.product_id)}">See who</button>`}
+    </div>`).join("");
+
+  document.querySelectorAll("[data-notify]").forEach(b =>
+    b.addEventListener("click", () => notifyWaiting(Number(b.dataset.notify))));
+  document.querySelectorAll("[data-seewho]").forEach(b =>
+    b.addEventListener("click", () => showWaiting(Number(b.dataset.seewho))));
+}
+
+function showWaiting(productId) {
+  const a = A.stockAlerts.find(x => Number(x.product_id) === productId);
+  if (!a) return;
+  openSheet(a.product_name, `
+    <p style="font-size:.86rem;color:var(--a-text-2);margin-bottom:14px">
+      ${esc(a.waiting)} ${Number(a.waiting) === 1 ? "person is" : "people are"} waiting for this to come back.
+      Restock it and the <strong>Email them</strong> button appears.
+    </p>
+    ${(a.people || []).map(p => `
+      <div class="a-list-row">
+        <div class="a-list-row-main">
+          <strong style="font-weight:500;font-size:.85rem">${esc(p.email)}</strong>
+          <span>${p.size ? "size " + esc(p.size) + " &middot; " : ""}${esc(timeAgo(p.since))}</span>
+        </div>
+      </div>`).join("")}
+  `, `<button class="a-btn a-btn-ghost" onclick="closeSheet()">Close</button>`);
+}
+
+async function notifyWaiting(productId) {
+  const a = A.stockAlerts.find(x => Number(x.product_id) === productId);
+  if (!a) return;
+
+  const product = A.products.find(p => p.id === productId);
+  const res = await dbQueueBackInStock(
+    { ...a, slug: product ? product.slug : "" }, a.people || []);
+
+  if (!res.ok) return toast("Could not queue emails: " + res.message);
+
+  await dbMarkAlertsNotified(productId);
+  A.stockAlerts = A.stockAlerts.filter(x => Number(x.product_id) !== productId);
+  renderStockAlerts();
+  toast(`${res.count} back-in-stock email${res.count === 1 ? "" : "s"} queued`);
+  refreshEmailStatus();
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   EMAIL DELIVERY STATUS
+   ══════════════════════════════════════════════════════════════════════ */
+
+async function refreshEmailStatus() {
+  const mount = document.getElementById("email-status");
+  if (!mount) return;
+  const s = await dbEmailQueueSummary();
+
+  if (!s || (s.queued === undefined)) {
+    mount.innerHTML = `<div class="a-empty"><p>Email queue not set up yet. Run migration 003.</p></div>`;
+    return;
+  }
+
+  mount.innerHTML = `
+    <div class="a-stats" style="margin-bottom:12px">
+      <div class="a-stat"><div class="a-stat-label">Sent</div>
+        <div class="a-stat-value">${esc(s.sent)}</div></div>
+      <div class="a-stat${Number(s.queued) > 0 ? " is-warn" : ""}"><div class="a-stat-label">Waiting</div>
+        <div class="a-stat-value">${esc(s.queued)}</div></div>
+      <div class="a-stat${Number(s.failed) > 0 ? " is-alert" : ""}"><div class="a-stat-label">Failed</div>
+        <div class="a-stat-value">${esc(s.failed)}</div></div>
+    </div>
+    <p style="font-size:.8rem;color:var(--a-text-3);line-height:1.6">
+      Every order queues a confirmation email to the address the customer gave at
+      checkout. The <strong>send-emails</strong> function delivers them.
+      ${Number(s.queued) > 0 ? " Messages are waiting — check that the function is deployed and scheduled." : ""}
+    </p>`;
 }

@@ -693,8 +693,70 @@ function switchTab(name, btn) {
   document.getElementById("tab-" + name).classList.add("active");
 }
 
-function openSizeGuide() { document.getElementById("size-modal").classList.add("open"); }
-function closeSizeGuide() { document.getElementById("size-modal").classList.remove("open"); }
+/* Whichever product the visitor is looking at: the product page, or the one
+   open in the quick-view modal. */
+function activeProduct() {
+  if (typeof PDP !== "undefined" && PDP) return PDP;
+  if (typeof currentModal !== "undefined" && currentModal) return currentModal;
+  return null;
+}
+
+function categoryName(id) {
+  const c = (typeof CATEGORIES !== "undefined" ? CATEGORIES : []).find(x => x.id === id);
+  return c ? c.name : (id || "Shop");
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   SIZE GUIDE — per category, not one chart for everything
+   The single chart showed chest/waist/hips for sneakers and chains.
+   ══════════════════════════════════════════════════════════════════════ */
+
+let sizeCharts = null;
+
+async function openSizeGuide() {
+  const modal = document.getElementById("size-modal");
+  const card = modal.querySelector(".modal-card");
+
+  modal.classList.add("open");
+  document.body.classList.add("no-scroll");
+
+  if (sizeCharts === null) {
+    card.innerHTML = `<button class="modal-x" onclick="closeSizeGuide()" aria-label="Close">✕</button>
+                      <p style="padding:24px 0;color:var(--text-sub)">Loading size guide…</p>`;
+    sizeCharts = await dbFetchSizeCharts();
+  }
+
+  const active = activeProduct();
+  const chart = active ? sizeCharts[active.category] : null;
+  const askUrl = `https://wa.me/${esc(PHONE)}?text=` +
+    encodeURIComponent(`Hello Dakar Dapper, I need help with sizing for the ${(active && active.name) || "product"}.`);
+
+  card.innerHTML = chart ? `
+    <button class="modal-x" onclick="closeSizeGuide()" aria-label="Close">✕</button>
+    <h2 class="size-modal-title">Size Guide</h2>
+    <p class="size-modal-sub">${esc(categoryName(active.category))} · measurements in ${esc(chart.unit || "cm")}</p>
+    <div class="size-table-wrap">
+      <table class="size-table">
+        <thead><tr>${(chart.columns || []).map(c => `<th scope="col">${esc(c)}</th>`).join("")}</tr></thead>
+        <tbody>
+          ${(chart.rows || []).map(r => `<tr>${r.map((cell, i) =>
+            i === 0 ? `<th scope="row">${esc(cell)}</th>` : `<td>${esc(cell)}</td>`).join("")}</tr>`).join("")}
+        </tbody>
+      </table>
+    </div>
+    ${chart.note ? `<p class="size-modal-note">${esc(chart.note)}</p>` : ""}
+    <p class="size-modal-help">Still unsure? <a href="${askUrl}" target="_blank" rel="noopener">Ask us on WhatsApp</a> and we will help you pick.</p>`
+  : `
+    <button class="modal-x" onclick="closeSizeGuide()" aria-label="Close">✕</button>
+    <h2 class="size-modal-title">Size Guide</h2>
+    <p class="size-modal-sub">No chart has been added for this category yet.</p>
+    <p class="size-modal-help"><a href="${askUrl}" target="_blank" rel="noopener">Ask us on WhatsApp</a> and we will advise on fit.</p>`;
+}
+
+function closeSizeGuide() {
+  document.getElementById("size-modal").classList.remove("open");
+  document.body.classList.remove("no-scroll");
+}
 
 /* -- CHECKOUT ----------------------------------------------------------
    The browser collects details and shows an ESTIMATE. The authoritative
@@ -1065,46 +1127,33 @@ function bindSearch() {
 
 /* ── WHATSAPP ──────────────────────────────────────────────────────── */
 function bindWhatsApp() {
-  const btn = document.getElementById("wa-btn");
-  const popup = document.getElementById("wa-popup");
-  const close = document.getElementById("wa-close");
-  if (!btn || !popup) return;
+  const link = document.getElementById("wa-btn");
+  if (!link) return;
 
-  btn.addEventListener("click", () => {
-    waOpen = !waOpen;
-    popup.classList.toggle("open", waOpen);
-  });
-  if (close) {
-    close.addEventListener("click", () => {
-      waOpen = false;
-      popup.classList.remove("open");
-    });
-  }
-  // Chips
-  document.querySelectorAll(".wa-chip").forEach(chip => {
-    chip.addEventListener("click", () => {
-      const msg = chip.dataset.msg;
-      window.open(`https://wa.me/${PHONE}?text=${encodeURIComponent(msg)}`, "_blank");
-    });
-  });
-  // Send
-  const waSend = document.getElementById("wa-send");
-  if (waSend) waSend.addEventListener("click", sendWaMsg);
-  const waMsg = document.getElementById("wa-msg");
-  if (waMsg) {
-    waMsg.addEventListener("keypress", e => {
-      if (e.key === "Enter") sendWaMsg();
-    });
-  }
+  // The client asked for a straight redirect rather than an in-page chat
+  // mock-up. The anchor already works on its own; this keeps the number and
+  // the opening line current as the page changes.
+  const refresh = () => {
+    link.href = `https://wa.me/${PHONE}?text=${encodeURIComponent(whatsappOpener())}`;
+  };
+  refresh();
+  link.addEventListener("mouseenter", refresh);
+  link.addEventListener("touchstart", refresh, { passive: true });
+  link.addEventListener("focus", refresh);
 }
 
-function sendWaMsg() {
-  const input = document.getElementById("wa-msg");
-  const msg = input.value.trim();
-  if (!msg) return;
-  window.open(`https://wa.me/${PHONE}?text=${encodeURIComponent(msg)}`, "_blank");
-  input.value = "";
+/* A sensible opening line for wherever the visitor happens to be. */
+function whatsappOpener() {
+  if (typeof PDP !== "undefined" && PDP) {
+    return `Hello Dakar Dapper, I'd like to ask about the ${PDP.name} (${formatPrice(PDP.price)}).`;
+  }
+  if (cart.length) {
+    return "Hello Dakar Dapper, I have some items in my bag and would like help checking out.";
+  }
+  return "Hello Dakar Dapper, I'd like to ask about your collection.";
 }
+
+
 
 /* ── NEWSLETTER (FOOTER & VIP MODAL) ──────────────────────────────── */
 async function handleNewsletter(e) {

@@ -117,10 +117,7 @@ function renderPdp(p) {
         ${p.subtitle ? `<p class="pdp-sub">${esc(p.subtitle)}</p>` : ""}
 
         <div class="pdp-meta">
-          <span class="pdp-stars" aria-label="Rated ${esc(p.rating)} out of 5">
-            ${"★".repeat(Math.round(p.rating || 5))}<span class="num">${esc(p.rating)}</span>
-          </span>
-          ${p.reviews > 0 ? `<span class="pdp-reviews">${esc(p.reviews)} reviews</span>` : ""}
+          ${ratingSummaryHtml(p)}
           <span class="pdp-stock ${soldOut ? "out" : "in"}">
             ${soldOut ? "✕ Sold out" : lowStock ? `▲ Only ${p.stock} left` : "● In stock"}
           </span>
@@ -173,9 +170,18 @@ function renderPdp(p) {
             ${soldOut ? "Sold out" : "Add to Bag"}
           </button>
         </div>
-        <button class="btn btn-gold buy-full" id="pdp-buy"${soldOut ? " disabled" : ""}>
-          ${soldOut ? "Notify me when back" : "Buy it now"}
-        </button>
+        ${soldOut ? `
+          <div class="restock-box" id="restock-box">
+            <h3>Tell me when it is back</h3>
+            <p>We will email you once, the moment this piece is available again.</p>
+            <form class="restock-form" id="restock-form" novalidate>
+              <input type="email" id="restock-email" inputmode="email" autocomplete="email"
+                     placeholder="your@email.com" aria-label="Your email address" required>
+              <button class="btn btn-dark" type="submit" id="restock-btn">Notify me</button>
+            </form>
+            <span class="restock-msg" id="restock-msg" role="status"></span>
+          </div>`
+        : `<button class="btn btn-gold buy-full" id="pdp-buy">Buy it now</button>`}
 
         <button class="pdp-share" id="pdp-share">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M16 6l-4-4-4 4M12 2v13"/></svg>
@@ -207,19 +213,21 @@ function renderPdp(p) {
              <a href="/shipping.html">Full policy</a>.</p>
         </details>
       </div>
-    </div>`;
+    </div>
+
+    <section class="pdp-reviews" id="pdp-reviews">
+      <div class="reviews-loading">Loading reviews…</div>
+    </section>`;
 
   bindPdp();
+  bindRestock();
+  loadReviews(p.id);
   updatePdpHead(p);
   renderPdpRelated(p);
   renderBuyBar(p, soldOut);
   if (typeof hydratePageContent === "function") hydratePageContent();
 }
 
-function categoryName(id) {
-  const c = (typeof CATEGORIES !== "undefined" ? CATEGORIES : []).find(x => x.id === id);
-  return c ? c.name : (id || "Shop");
-}
 
 /* ── Interaction ─────────────────────────────────────────────────────── */
 function bindPdp() {
@@ -434,4 +442,290 @@ function renderPdpNotFound() {
       <a class="btn btn-dark" href="/shop.html" style="margin-top:14px;display:inline-flex">Browse the shop</a>
     </div>`;
   document.getElementById("buy-bar").hidden = true;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   REVIEWS
+   The original build shipped invented ratings ("4.9 · 38 reviews"). Those
+   are gone. A product with no reviews now says so honestly and invites the
+   first one; everything shown here was written by a real customer and
+   approved by the shop.
+   ══════════════════════════════════════════════════════════════════════ */
+
+let pdpReviews = { summary: { count: 0, average: 0 }, items: [] };
+let reviewStars = 0;
+
+function starRow(value, size) {
+  const full = Math.round(Number(value) || 0);
+  return `<span class="stars-row${size ? " " + size : ""}" aria-hidden="true">` +
+    [1, 2, 3, 4, 5].map(n => `<span class="star${n <= full ? " on" : ""}">★</span>`).join("") +
+    `</span>`;
+}
+
+function ratingSummaryHtml(p) {
+  const count = Number(p.reviews) || 0;
+  if (!count) {
+    return `<a class="pdp-no-reviews" href="#pdp-reviews">Be the first to review</a>`;
+  }
+  return `
+    <a class="pdp-rating-link" href="#pdp-reviews" aria-label="Rated ${esc(p.rating)} out of 5 from ${count} reviews">
+      ${starRow(p.rating)}
+      <span class="num">${esc(p.rating)}</span>
+      <span class="pdp-reviews">(${count} review${count === 1 ? "" : "s"})</span>
+    </a>`;
+}
+
+async function loadReviews(productId) {
+  pdpReviews = await dbFetchReviews(productId);
+  renderReviews(productId);
+}
+
+function renderReviews(productId) {
+  const mount = document.getElementById("pdp-reviews");
+  if (!mount) return;
+
+  const { summary, items } = pdpReviews;
+  const count = Number(summary.count) || 0;
+  const avg = Number(summary.average) || 0;
+  const breakdown = summary.breakdown || {};
+  const maxBar = Math.max(1, ...[5, 4, 3, 2, 1].map(n => Number(breakdown[n]) || 0));
+
+  mount.innerHTML = `
+    <h2 class="section-title"><span>What customers say</span>Reviews</h2>
+
+    ${count === 0 ? `
+      <div class="reviews-empty">
+        <p>No reviews yet for this piece.</p>
+        <p class="sub">If you own it, your words help the next person decide.</p>
+      </div>`
+    : `
+      <div class="reviews-summary">
+        <div class="reviews-score">
+          <span class="score">${avg.toFixed(1)}</span>
+          ${starRow(avg, "lg")}
+          <span class="count">${count} review${count === 1 ? "" : "s"}</span>
+        </div>
+        <div class="reviews-bars">
+          ${[5, 4, 3, 2, 1].map(n => {
+            const v = Number(breakdown[n]) || 0;
+            return `
+            <div class="reviews-bar-row">
+              <span class="lbl">${n}★</span>
+              <span class="track"><span class="fill" style="width:${(v / maxBar) * 100}%"></span></span>
+              <span class="n">${v}</span>
+            </div>`;
+          }).join("")}
+        </div>
+      </div>
+
+      <ul class="reviews-list">
+        ${items.map(r => `
+          <li class="review">
+            <div class="review-head">
+              <div>
+                <span class="review-author">${esc(r.author_name)}</span>
+                ${r.verified ? `<span class="review-verified" title="This customer bought this product">✓ Verified purchase</span>` : ""}
+              </div>
+              <time datetime="${esc(r.created_at)}">${esc(reviewDate(r.created_at))}</time>
+            </div>
+            ${starRow(r.rating)}
+            ${r.title ? `<h4 class="review-title">${esc(r.title)}</h4>` : ""}
+            <p class="review-body">${esc(r.body)}</p>
+            ${r.size_bought ? `<span class="review-size">Size bought: ${esc(r.size_bought)}</span>` : ""}
+          </li>`).join("")}
+      </ul>`}
+
+    <div class="review-write">
+      <button class="btn btn-dark" id="review-toggle">Write a review</button>
+
+      <form class="review-form" id="review-form" hidden novalidate>
+        <div class="review-error" id="review-error" hidden></div>
+
+        <div class="review-field">
+          <label id="rating-label">Your rating</label>
+          <div class="star-picker" id="star-picker" role="radiogroup" aria-labelledby="rating-label">
+            ${[1, 2, 3, 4, 5].map(n => `
+              <button type="button" class="star-btn" data-star="${n}" role="radio"
+                      aria-checked="false" aria-label="${n} star${n === 1 ? "" : "s"}">★</button>`).join("")}
+          </div>
+        </div>
+
+        <div class="review-row">
+          <div class="review-field">
+            <label for="review-name">Your name</label>
+            <input id="review-name" type="text" autocomplete="name" required>
+          </div>
+          <div class="review-field">
+            <label for="review-email">Email <span class="opt">(not shown publicly)</span></label>
+            <input id="review-email" type="email" inputmode="email" autocomplete="email" required>
+          </div>
+        </div>
+
+        <div class="review-field">
+          <label for="review-title">Headline <span class="opt">(optional)</span></label>
+          <input id="review-title" type="text" placeholder="Fits exactly as described">
+        </div>
+
+        <div class="review-field">
+          <label for="review-body">Your review</label>
+          <textarea id="review-body" rows="4" required
+                    placeholder="How is the fit, the fabric, the quality?"></textarea>
+        </div>
+
+        ${(PDP.sizes && PDP.sizes.length) ? `
+          <div class="review-field">
+            <label for="review-size">Size you bought <span class="opt">(optional)</span></label>
+            <select id="review-size">
+              <option value="">Prefer not to say</option>
+              ${PDP.sizes.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join("")}
+            </select>
+          </div>` : ""}
+
+        <p class="review-note">
+          Reviews are checked before they appear. If you ordered with this email,
+          your review is marked <strong>Verified purchase</strong>.
+        </p>
+
+        <div class="review-actions">
+          <button class="btn btn-dark" type="submit" id="review-submit">Submit review</button>
+          <button class="btn btn-outline" type="button" id="review-cancel">Cancel</button>
+        </div>
+      </form>
+    </div>`;
+
+  bindReviewForm(productId);
+}
+
+function reviewDate(iso) {
+  return new Date(iso).toLocaleDateString("en-NG",
+    { day: "numeric", month: "short", year: "numeric" });
+}
+
+function bindReviewForm(productId) {
+  const toggle = document.getElementById("review-toggle");
+  const form = document.getElementById("review-form");
+  if (!toggle || !form) return;
+
+  toggle.addEventListener("click", () => {
+    form.hidden = false;
+    toggle.hidden = true;
+    form.scrollIntoView({ behavior: "smooth", block: "center" });
+    document.getElementById("review-name").focus();
+  });
+
+  document.getElementById("review-cancel").addEventListener("click", () => {
+    form.hidden = true;
+    toggle.hidden = false;
+  });
+
+  document.querySelectorAll(".star-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      reviewStars = Number(btn.dataset.star);
+      document.querySelectorAll(".star-btn").forEach((b, i) => {
+        b.classList.toggle("on", i < reviewStars);
+        b.setAttribute("aria-checked", String(i + 1 === reviewStars));
+      });
+    });
+    btn.addEventListener("mouseenter", () => {
+      const n = Number(btn.dataset.star);
+      document.querySelectorAll(".star-btn").forEach((b, i) => b.classList.toggle("hover", i < n));
+    });
+  });
+
+  document.getElementById("star-picker").addEventListener("mouseleave", () =>
+    document.querySelectorAll(".star-btn").forEach(b => b.classList.remove("hover")));
+
+  form.addEventListener("submit", e => submitReview(e, productId));
+}
+
+async function submitReview(e, productId) {
+  e.preventDefault();
+  const box = document.getElementById("review-error");
+  const btn = document.getElementById("review-submit");
+  const val = id => {
+    const el = document.getElementById(id);
+    return el ? el.value.trim() : "";
+  };
+
+  const fail = msg => { box.hidden = false; box.textContent = msg; };
+  box.hidden = true;
+
+  if (!reviewStars) return fail("Please choose a star rating.");
+  if (val("review-name").length < 2) return fail("Please enter your name.");
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(val("review-email"))) return fail("Please enter a valid email address.");
+  if (val("review-body").length < 10) return fail("Please write at least a sentence.");
+
+  btn.disabled = true;
+  btn.textContent = "Submitting…";
+
+  const res = await dbSubmitReview({
+    product_id: productId,
+    name: val("review-name"),
+    email: val("review-email"),
+    rating: reviewStars,
+    title: val("review-title"),
+    body: val("review-body"),
+    size: val("review-size")
+  });
+
+  btn.disabled = false;
+  btn.textContent = "Submit review";
+
+  if (!res.ok) return fail(res.message);
+
+  document.querySelector(".review-write").innerHTML = `
+    <div class="review-thanks">
+      <div class="check-circle">✓</div>
+      <h3>Thank you</h3>
+      <p>Your review has been sent for checking and will appear shortly.${
+        res.verified ? " It will show as a <strong>verified purchase</strong>." : ""}</p>
+    </div>`;
+  showToast("Review submitted — thank you");
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   BACK IN STOCK
+   A sold-out page used to be a dead end. Now it captures the demand.
+   ══════════════════════════════════════════════════════════════════════ */
+
+function bindRestock() {
+  const form = document.getElementById("restock-form");
+  if (!form) return;
+
+  form.addEventListener("submit", async e => {
+    e.preventDefault();
+    const input = document.getElementById("restock-email");
+    const btn = document.getElementById("restock-btn");
+    const msg = document.getElementById("restock-msg");
+    const email = input.value.trim();
+
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+      msg.textContent = "Please enter a valid email address.";
+      msg.className = "restock-msg error";
+      input.focus();
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = "Saving…";
+    const ok = await dbRequestStockAlert(PDP.id, email, pdpSize);
+    btn.disabled = false;
+    btn.textContent = "Notify me";
+
+    if (!ok) {
+      msg.textContent = "Could not save that just now. Please try again.";
+      msg.className = "restock-msg error";
+      return;
+    }
+
+    document.getElementById("restock-box").innerHTML = `
+      <div class="restock-done">
+        <span class="check-circle small">✓</span>
+        <div>
+          <strong>You are on the list</strong>
+          <span>We will email ${esc(email)} the moment it is back.</span>
+        </div>
+      </div>`;
+    showToast("We will let you know");
+  });
 }
