@@ -2,7 +2,8 @@
    DAKAR DAPPER — Complete Luxury Design System
    Professional E-Commerce for Premium Men's Wears & Accessories
    ========================================================================== */
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600;700;800&display=swap');
+/* Fonts are loaded from the HTML <head> with preconnect — an @import here
+   would block rendering until this stylesheet itself had downloaded. */
 
 /* ── Design Tokens ────────────────────────────────────────────────── */
 :root {
@@ -1004,4 +1005,299 @@ ul{list-style:none}
     font-size:.7rem;padding:12px 24px;text-align:center;
     width:100%;justify-content:center;
   }
+}
+
+/* ==========================================================================
+   MOBILE, ACCESSIBILITY & CHECKOUT REFINEMENTS
+   ========================================================================== */
+
+/* ── Dynamic viewport units ─────────────────────────────────────────────
+   Mobile browsers count their collapsing toolbar inside 100vh, which pushed
+   the filter sidebar's Apply button off-screen. dvh tracks the real height. */
+@supports (height: 100dvh) {
+  .shop-sidebar { height: 100dvh; }
+  .hero { min-height: 82dvh; }
+}
+
+/* ── Touch targets ──────────────────────────────────────────────────────
+   Apple HIG and WCAG 2.5.5 both want 44px. The header icons were 30px. */
+.header-actions .btn-icon,
+.hamburger,
+.drawer-close,
+.modal-x {
+  min-width: 44px;
+  min-height: 44px;
+}
+.header-actions .btn-icon { display: inline-flex; align-items: center; justify-content: center; }
+
+@media (max-width: 480px) {
+  .header-actions { gap: 0; }
+  .header-actions .btn-icon { width: 42px; height: 42px; }
+  .header-actions .btn-icon svg { width: 19px; height: 19px; }
+  /* The badge follows the larger button */
+  .header-actions .btn-icon .badge-count { top: 4px; right: 4px; }
+}
+
+/* Keyboard users need to see where they are */
+:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ── Motion ─────────────────────────────────────────────────────────────
+   The hero's scroll-driven zoom is decorative. Honour the OS setting. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .hero-bg img { transform: none !important; }
+  .p-card { opacity: 1 !important; transform: none !important; }
+}
+
+/* ── Low stock badge ────────────────────────────────────────────────── */
+.tag-low {
+  background: #FEF3C7;
+  color: #92400E;
+  border: 1px solid #FCD34D;
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-size: .64rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+/* ── Checkout form ──────────────────────────────────────────────────── */
+.checkout-heading {
+  font-family: var(--font-serif);
+  font-size: 1.5rem;
+  line-height: 1.2;
+  margin-bottom: 3px;
+}
+.checkout-sub { font-size: .85rem; color: var(--text-sub); margin-bottom: 18px; }
+
+.form-grid { display: flex; flex-direction: column; gap: 13px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-grp { display: flex; flex-direction: column; gap: 5px; }
+.form-grp label {
+  font-size: .76rem;
+  font-weight: 600;
+  letter-spacing: .04em;
+  color: var(--text-sub);
+}
+.form-grp label .opt { font-weight: 400; color: var(--text-faint); }
+
+.form-grp input,
+.form-grp select {
+  /* 16px stops iOS Safari zooming the page when a field gains focus */
+  font-size: 16px;
+  padding: 12px 14px;
+  min-height: 46px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--bg-white);
+  color: var(--text);
+  width: 100%;
+  transition: border-color .18s, box-shadow .18s;
+}
+.form-grp input:focus,
+.form-grp select:focus {
+  outline: none;
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(184,150,90,.18);
+}
+.form-grp input.invalid { border-color: #DC2626; }
+
+.field-err { font-size: .76rem; color: #DC2626; min-height: 1em; }
+.field-err:empty { min-height: 0; }
+
+.checkout-summary {
+  background: var(--bg-muted);
+  border-radius: var(--r-md);
+  padding: 14px 16px;
+  margin-top: 4px;
+}
+.sum-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: .88rem;
+  padding: 4px 0;
+}
+.sum-row.sum-total {
+  font-size: 1.05rem;
+  font-weight: 700;
+  border-top: 1px solid var(--border);
+  margin-top: 6px;
+  padding-top: 10px;
+}
+.sum-note { font-size: .72rem; color: var(--text-faint); margin-top: 8px; line-height: 1.5; }
+
+.checkout-error {
+  background: #FEF2F2;
+  border: 1px solid #FECACA;
+  color: #B91C1C;
+  padding: 11px 14px;
+  border-radius: var(--r-sm);
+  font-size: .84rem;
+  line-height: 1.5;
+}
+.checkout-error[hidden] { display: none; }
+
+.checkout-trust {
+  font-size: .74rem;
+  color: var(--text-faint);
+  text-align: center;
+  margin-top: 4px;
+}
+
+/* Order confirmation */
+.order-done { text-align: center; padding: 8px 0; }
+.order-ref {
+  font-size: .82rem;
+  color: var(--text-sub);
+  margin: 10px 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.order-ref strong {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.order-totals {
+  background: var(--bg-muted);
+  border-radius: var(--r-md);
+  padding: 13px 16px;
+  text-align: left;
+  margin-bottom: 16px;
+}
+.order-next {
+  font-size: .85rem;
+  color: var(--text-sub);
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+
+/* Auth error slot */
+.a-error.auth-error {
+  background: #FEF2F2;
+  border: 1px solid #FECACA;
+  color: #B91C1C;
+  padding: 10px 13px;
+  border-radius: var(--r-sm);
+  font-size: .82rem;
+  margin-bottom: 12px;
+}
+.a-error.auth-error[hidden] { display: none; }
+
+.btn-icon.signed-in::after {
+  content: '';
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #16A34A;
+  border: 1.5px solid var(--bg-white);
+}
+.btn-icon { position: relative; }
+
+/* ── Catalogue loading state ─────────────────────────────────────────
+   Avoids the flash where bundled placeholder products are replaced by the
+   live catalogue a moment later. */
+.product-grid:empty::after,
+.shop-product-grid:empty::after {
+  content: '';
+  display: block;
+  grid-column: 1 / -1;
+  height: 320px;
+  border-radius: var(--r-md);
+  background: linear-gradient(90deg, var(--bg-muted) 25%, var(--border) 50%, var(--bg-muted) 75%);
+  background-size: 200% 100%;
+  animation: ddShimmer 1.3s infinite linear;
+}
+@keyframes ddShimmer { to { background-position: -200% 0; } }
+
+/* ── Wider screens: the layout should keep improving past 1024px ────── */
+@media (min-width: 1440px) {
+  .container { max-width: 1340px; }
+  .product-grid { grid-template-columns: repeat(4, 1fr); gap: 22px; }
+  .shop-product-grid { grid-template-columns: repeat(4, 1fr); }
+}
+@media (min-width: 1800px) {
+  .container { max-width: 1520px; }
+}
+
+/* ── Landscape phones ───────────────────────────────────────────────── */
+@media (max-height: 460px) and (orientation: landscape) {
+  .hero { min-height: 100dvh; }
+  .hero-title { font-size: clamp(1.4rem, 5vw, 2rem); margin-bottom: 8px; }
+  .hero-desc { font-size: .78rem; margin-bottom: 12px; }
+  .hero-btns { flex-direction: row; }
+  .drawer, .modal-card { max-height: 96dvh; }
+}
+
+/* ── Small phones ───────────────────────────────────────────────────── */
+@media (max-width: 360px) {
+  .form-row { grid-template-columns: 1fr; }
+  .container { padding-left: 14px; padding-right: 14px; }
+}
+
+/* ── Print ──────────────────────────────────────────────────────────── */
+@media print {
+  .header, .wa-container, .drawer, .modal-wrap, .newsletter, #overlay { display: none !important; }
+  body { background: #fff; }
+}
+
+/* ── Filter drawer: keep Apply reachable ────────────────────────────────
+   The filter list is taller than a phone screen, so the Apply button used
+   to sit below the fold behind four filter groups. Sticking it to the
+   bottom of the scroll container keeps it in reach at all times. */
+.sidebar-actions { display: contents; }
+
+@media (max-width: 768px) {
+  .shop-sidebar {
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 0;
+  }
+  .shop-sidebar > :not(.sidebar-actions) { flex-shrink: 0; }
+
+  .sidebar-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    position: sticky;
+    bottom: 0;
+    margin-top: auto;
+    padding: 12px 0 calc(16px + env(safe-area-inset-bottom, 0px));
+    background: var(--bg-white);
+    box-shadow: 0 -8px 18px -8px rgba(0,0,0,.14);
+  }
+  .sidebar-actions::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: var(--border);
+  }
+  .sidebar-apply-btn { width: 100%; min-height: 48px; }
+  .sidebar-reset-btn { width: 100%; min-height: 44px; }
+}
+
+/* Placeholder shown when a product image path is wrong */
+.img-fallback {
+  object-fit: contain !important;
+  padding: 22%;
+  background: var(--bg-muted);
+  opacity: .5;
 }

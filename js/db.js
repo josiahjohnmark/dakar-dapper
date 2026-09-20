@@ -1,0 +1,465 @@
+/* ==========================================================================
+   DB.JS — Dakar Dapper data layer
+   --------------------------------------------------------------------------
+   The anon key below is PUBLIC by design; it is safe to ship because every
+   table is protected by Row Level Security (see supabase/setup.sql).
+   Anonymous visitors can read the catalogue and nothing else. Orders and
+   newsletter signups go through server-side functions that revalidate the
+   input and recompute all money. Admin writes require a signed-in admin.
+   ========================================================================== */
+
+const SUPABASE_URL = "https://cqcyxiqsxcuqikvbkcrs.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNxY3l4aXFzeGN1cWlrdmJrY3JzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4NTY3NTIsImV4cCI6MjEwNTQzMjc1Mn0.pnnfzVRNvTAN_cvpEsSm5GhNhGMjNwudXlLPuJIyn54";
+
+let supabaseClient = null;
+
+(function initSupabase() {
+  if (!window.supabase || typeof window.supabase.createClient !== "function") {
+    console.warn("Dakar Dapper: Supabase library unavailable — running on local data.");
+    return;
+  }
+  try {
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: false,
+        storageKey: "dd_admin_session"
+      }
+    });
+  } catch (err) {
+    console.warn("Dakar Dapper: could not initialise Supabase.", err);
+  }
+})();
+
+function dbReady() { return !!supabaseClient; }
+
+/* ── Row <-> object mapping ─────────────────────────────────────────── */
+
+function mapDbToProduct(row) {
+  return {
+    id: Number(row.id),
+    name: row.name || "",
+    subtitle: row.subtitle || "",
+    category: row.category,
+    badge: row.badge,
+    badgeType: row.badge_type || "tag-gold",
+    price: Number(row.price) || 0,
+    originalPrice: row.original_price ? Number(row.original_price) : null,
+    showDiscount: row.show_discount !== false,
+    stock: row.stock === undefined || row.stock === null ? 0 : Number(row.stock),
+    isOutOfStock: Boolean(row.is_out_of_stock),
+    image: row.image || "",
+    images: Array.isArray(row.images) ? row.images : [],
+    sizes: Array.isArray(row.sizes) ? row.sizes : ["S", "M", "L", "XL"],
+    colors: Array.isArray(row.colors) ? row.colors : ["#1A1A1A", "#E5E5E5"],
+    colorNames: Array.isArray(row.color_names) ? row.color_names : ["Noir", "Bone"],
+    rating: Number(row.rating) || 5.0,
+    reviews: Number(row.reviews) || 0,
+    description: row.description || "",
+    details: Array.isArray(row.details) ? row.details : [],
+    care: row.care || "",
+    isNew: Boolean(row.is_new),
+    isActive: row.is_active !== false,
+    slug: row.slug || ""
+  };
+}
+
+function slugify(s) {
+  return String(s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+function mapProductToDb(p) {
+  return {
+    id: p.id,
+    name: p.name,
+    subtitle: p.subtitle || "",
+    category: p.category,
+    badge: p.badge || null,
+    badge_type: p.badgeType || "tag-gold",
+    price: p.price,
+    original_price: p.originalPrice || null,
+    show_discount: p.showDiscount !== false,
+    stock: Number(p.stock) || 0,
+    is_out_of_stock: (Number(p.stock) || 0) <= 0,
+    image: p.image,
+    images: p.images || [],
+    sizes: p.sizes,
+    colors: p.colors,
+    color_names: p.colorNames,
+    rating: p.rating || 5.0,
+    reviews: p.reviews || 0,
+    description: p.description || "",
+    details: p.details || [],
+    care: p.care || "",
+    is_new: Boolean(p.isNew),
+    is_active: p.isActive !== false,
+    slug: p.slug || slugify(p.name)
+  };
+}
+
+function mapDbToContent(d) {
+  return {
+    heroBadge: d.hero_badge, heroTitle: d.hero_title, heroDesc: d.hero_desc,
+    heroBtn1Text: d.hero_btn1_text, heroBtn2Text: d.hero_btn2_text,
+    bannerNotice: d.banner_notice, storyKicker: d.story_kicker,
+    storyTitle: d.story_title, storyDesc: d.story_desc,
+    phone: d.phone, phoneDisplay: d.phone_display,
+    instagramUrl: d.instagram_url || "", twitterUrl: d.twitter_url || "",
+    emailAddress: d.email_address || "",
+    freeShipMin: Number(d.free_ship_min) || 150000,
+    popupDelaySec: d.popup_delay_sec || 30
+  };
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   PUBLIC STOREFRONT READS
+   ══════════════════════════════════════════════════════════════════════ */
+
+async function dbFetchProducts() {
+  if (!supabaseClient) return null;
+  try {
+    const { data, error } = await supabaseClient
+      .from("dd_products").select("*").order("id", { ascending: true });
+    if (error) { console.warn("products:", error.message); return null; }
+    return (data || []).map(mapDbToProduct);
+  } catch (err) { console.warn("products:", err); return null; }
+}
+
+async function dbFetchCategories() {
+  if (!supabaseClient) return null;
+  try {
+    const { data, error } = await supabaseClient
+      .from("dd_categories").select("id,name,display_order")
+      .order("display_order", { ascending: true });
+    if (error) { console.warn("categories:", error.message); return null; }
+    return (data || []).map(c => ({ id: c.id, name: c.name }));
+  } catch (err) { console.warn("categories:", err); return null; }
+}
+
+async function dbFetchContent() {
+  if (!supabaseClient) return null;
+  try {
+    const { data, error } = await supabaseClient
+      .from("dd_content").select("*").eq("id", "main").maybeSingle();
+    if (error) { console.warn("content:", error.message); return null; }
+    return data ? mapDbToContent(data) : null;
+  } catch (err) { console.warn("content:", err); return null; }
+}
+
+async function dbFetchShippingRates() {
+  if (!supabaseClient) return [];
+  try {
+    const { data, error } = await supabaseClient
+      .from("dd_shipping_rates").select("state,fee").order("state");
+    if (error) return [];
+    return data || [];
+  } catch { return []; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   CHECKOUT — totals are computed on the server, never here
+   ══════════════════════════════════════════════════════════════════════ */
+
+async function dbPlaceOrder(orderData) {
+  if (!supabaseClient) {
+    return { ok: false, message: "We could not reach the store. Check your connection." };
+  }
+  try {
+    const { data, error } = await supabaseClient.rpc("place_order", {
+      payload: {
+        name: orderData.name,
+        email: orderData.email,
+        phone: orderData.phone,
+        address: orderData.address,
+        city: orderData.city,
+        state: orderData.state,
+        note: orderData.note || "",
+        items: (orderData.items || []).map(i => ({
+          id: i.id, qty: i.qty, size: i.size, color: i.color
+        }))
+      }
+    });
+    if (error) return { ok: false, message: error.message || "Order could not be placed." };
+    return { ok: true, order: data };
+  } catch (err) {
+    return { ok: false, message: "Network error. Please try again." };
+  }
+}
+
+async function dbAddSubscriber(email, source = "popup") {
+  if (!supabaseClient || !email) return false;
+  try {
+    const { data, error } = await supabaseClient.rpc("subscribe_email", {
+      p_email: email, p_source: source
+    });
+    return !error && data !== false;
+  } catch { return false; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   CUSTOMER ACCOUNTS
+   ══════════════════════════════════════════════════════════════════════ */
+
+function friendlyAuthError(msg) {
+  const m = (msg || "").toLowerCase();
+  if (m.includes("invalid login")) return "Email or password is incorrect.";
+  if (m.includes("already registered")) return "That email already has an account. Try signing in.";
+  if (m.includes("rate limit") || m.includes("too many")) return "Too many attempts. Please wait a moment.";
+  if (m.includes("password")) return "Password must be at least 8 characters.";
+  return msg || "Something went wrong. Please try again.";
+}
+
+async function customerSignUp(email, password, fullName) {
+  if (!supabaseClient) return { ok: false, message: "Service unavailable." };
+  const { data, error } = await supabaseClient.auth.signUp({
+    email: String(email || "").trim(),
+    password,
+    options: { data: { full_name: String(fullName || "").trim().slice(0, 120) } }
+  });
+  if (error) return { ok: false, message: friendlyAuthError(error.message) };
+  return { ok: true, user: data.user, needsConfirm: !data.session };
+}
+
+async function customerSignIn(email, password) {
+  if (!supabaseClient) return { ok: false, message: "Service unavailable." };
+  const { data, error } = await supabaseClient.auth.signInWithPassword({
+    email: String(email || "").trim(), password
+  });
+  if (error) return { ok: false, message: friendlyAuthError(error.message) };
+  return { ok: true, user: data.user };
+}
+
+async function customerSignOut() {
+  if (supabaseClient) await supabaseClient.auth.signOut();
+}
+
+async function customerCurrent() {
+  if (!supabaseClient) return null;
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  return session ? session.user : null;
+}
+
+async function customerOrders() {
+  if (!supabaseClient) return [];
+  const { data, error } = await supabaseClient.from("dd_orders")
+    .select("order_number,items,total,status,payment_status,created_at")
+    .order("created_at", { ascending: false }).limit(25);
+  return error ? [] : (data || []);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   ADMIN AUTH
+   ══════════════════════════════════════════════════════════════════════ */
+
+async function authSignIn(email, password) {
+  if (!supabaseClient) return { ok: false, message: "Service unavailable." };
+  const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  if (error) return { ok: false, message: error.message };
+
+  const { data: isAdmin, error: rpcErr } = await supabaseClient.rpc("is_admin");
+  if (rpcErr || !isAdmin) {
+    await supabaseClient.auth.signOut();
+    return { ok: false, message: "This account is not authorised for the admin suite." };
+  }
+  return { ok: true, user: data.user };
+}
+
+async function authSignOut() {
+  if (supabaseClient) await supabaseClient.auth.signOut();
+}
+
+async function authCurrentAdmin() {
+  if (!supabaseClient) return null;
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  if (!session) return null;
+  const { data: isAdmin } = await supabaseClient.rpc("is_admin");
+  return isAdmin ? session.user : null;
+}
+
+async function authSendReset(email) {
+  if (!supabaseClient) return false;
+  const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + "/admin.html"
+  });
+  return !error;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   ADMIN WRITES — every one of these is rejected by the database unless
+   the caller holds a valid admin session.
+   ══════════════════════════════════════════════════════════════════════ */
+
+async function dbSaveProduct(product) {
+  if (!supabaseClient) return { ok: false, message: "Offline." };
+  const { error } = await supabaseClient
+    .from("dd_products").upsert(mapProductToDb(product), { onConflict: "id" });
+  if (error) return { ok: false, message: error.message };
+  dbLog("product.save", "product", String(product.id), { name: product.name });
+  return { ok: true };
+}
+
+async function dbDeleteProduct(id) {
+  if (!supabaseClient) return { ok: false, message: "Offline." };
+  const { error } = await supabaseClient.from("dd_products").delete().eq("id", id);
+  if (error) return { ok: false, message: error.message };
+  dbLog("product.delete", "product", String(id));
+  return { ok: true };
+}
+
+async function dbSetStock(id, stock) {
+  if (!supabaseClient) return { ok: false, message: "Offline." };
+  const s = Math.max(0, Number(stock) || 0);
+  const { error } = await supabaseClient.from("dd_products")
+    .update({ stock: s, is_out_of_stock: s <= 0 }).eq("id", id);
+  if (error) return { ok: false, message: error.message };
+  dbLog("product.stock", "product", String(id), { stock: s });
+  return { ok: true };
+}
+
+async function dbNextProductId() {
+  if (!supabaseClient) return Date.now() % 100000;
+  const { data } = await supabaseClient
+    .from("dd_products").select("id").order("id", { ascending: false }).limit(1);
+  return data && data.length ? Number(data[0].id) + 1 : 1;
+}
+
+async function dbSaveCategory(cat, order = 99) {
+  if (!supabaseClient) return { ok: false, message: "Offline." };
+  const { error } = await supabaseClient.from("dd_categories")
+    .upsert({ id: cat.id, name: cat.name, display_order: order }, { onConflict: "id" });
+  if (error) return { ok: false, message: error.message };
+  dbLog("category.save", "category", cat.id);
+  return { ok: true };
+}
+
+async function dbDeleteCategory(id) {
+  if (!supabaseClient) return { ok: false, message: "Offline." };
+  const { error } = await supabaseClient.from("dd_categories").delete().eq("id", id);
+  if (error) return { ok: false, message: error.message };
+  dbLog("category.delete", "category", id);
+  return { ok: true };
+}
+
+async function dbSaveContent(c) {
+  if (!supabaseClient) return { ok: false, message: "Offline." };
+  const { error } = await supabaseClient.from("dd_content").upsert({
+    id: "main",
+    hero_badge: c.heroBadge, hero_title: c.heroTitle, hero_desc: c.heroDesc,
+    hero_btn1_text: c.heroBtn1Text, hero_btn2_text: c.heroBtn2Text,
+    banner_notice: c.bannerNotice, story_kicker: c.storyKicker,
+    story_title: c.storyTitle, story_desc: c.storyDesc,
+    phone: c.phone, phone_display: c.phoneDisplay,
+    instagram_url: c.instagramUrl, twitter_url: c.twitterUrl,
+    email_address: c.emailAddress,
+    free_ship_min: c.freeShipMin, popup_delay_sec: c.popupDelaySec
+  }, { onConflict: "id" });
+  if (error) return { ok: false, message: error.message };
+  dbLog("content.save", "content", "main");
+  return { ok: true };
+}
+
+async function dbFetchOrders({ status = "all", search = "", limit = 100 } = {}) {
+  if (!supabaseClient) return [];
+  let q = supabaseClient.from("dd_orders").select("*")
+    .order("created_at", { ascending: false }).limit(limit);
+  if (status !== "all") q = q.eq("status", status);
+  if (search) {
+    const s = `%${search}%`;
+    q = q.or(`customer_name.ilike.${s},customer_phone.ilike.${s},order_number.ilike.${s},customer_email.ilike.${s}`);
+  }
+  const { data, error } = await q;
+  if (error) { console.warn("orders:", error.message); return []; }
+  return data || [];
+}
+
+async function dbUpdateOrderStatus(id, status) {
+  if (!supabaseClient) return { ok: false, message: "Offline." };
+  const { error } = await supabaseClient.from("dd_orders")
+    .update({ status }).eq("id", id);
+  if (error) return { ok: false, message: error.message };
+  dbLog("order.status", "order", String(id), { status });
+  return { ok: true };
+}
+
+async function dbUpdateOrderPayment(id, payment_status) {
+  if (!supabaseClient) return { ok: false, message: "Offline." };
+  const { error } = await supabaseClient.from("dd_orders")
+    .update({ payment_status }).eq("id", id);
+  if (error) return { ok: false, message: error.message };
+  dbLog("order.payment", "order", String(id), { payment_status });
+  return { ok: true };
+}
+
+async function dbFetchSubscribers(limit = 500) {
+  if (!supabaseClient) return [];
+  const { data, error } = await supabaseClient.from("dd_subscribers")
+    .select("*").order("created_at", { ascending: false }).limit(limit);
+  return error ? [] : (data || []);
+}
+
+async function dbAdminStats() {
+  if (!supabaseClient) return null;
+  const { data, error } = await supabaseClient.rpc("admin_stats");
+  if (error) { console.warn("stats:", error.message); return null; }
+  return data;
+}
+
+async function dbFetchAuditLog(limit = 50) {
+  if (!supabaseClient) return [];
+  const { data, error } = await supabaseClient.from("dd_audit_log")
+    .select("*").order("created_at", { ascending: false }).limit(limit);
+  return error ? [] : (data || []);
+}
+
+function dbLog(action, entity, entityId, detail) {
+  if (!supabaseClient) return;
+  supabaseClient.rpc("log_admin_action", {
+    p_action: action, p_entity: entity || null,
+    p_entity_id: entityId || null, p_detail: detail || null
+  }).then(() => {}, () => {});
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   PRODUCT IMAGE UPLOAD (Supabase Storage bucket: "products")
+   ══════════════════════════════════════════════════════════════════════ */
+
+async function dbUploadProductImage(file) {
+  if (!supabaseClient) return { ok: false, message: "Offline." };
+
+  const allowed = ["image/jpeg", "image/png", "image/webp", "image/avif"];
+  if (!allowed.includes(file.type)) {
+    return { ok: false, message: "Please choose a JPG, PNG or WebP image." };
+  }
+  if (file.size > 6 * 1024 * 1024) {
+    return { ok: false, message: "Image is larger than 6MB. Please pick a smaller one." };
+  }
+
+  const ext = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "");
+  const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+
+  const { error } = await supabaseClient.storage
+    .from("products").upload(path, file, { cacheControl: "31536000", upsert: false });
+  if (error) return { ok: false, message: error.message };
+
+  const { data } = supabaseClient.storage.from("products").getPublicUrl(path);
+  dbLog("image.upload", "storage", path);
+  return { ok: true, url: data.publicUrl };
+}
+
+/* ── Realtime: push catalogue changes to open storefronts ───────────── */
+function dbSubscribeToCatalog(onChange) {
+  if (!supabaseClient) return null;
+  return supabaseClient.channel("dd_catalog")
+    .on("postgres_changes", { event: "*", schema: "public", table: "dd_products" }, onChange)
+    .on("postgres_changes", { event: "*", schema: "public", table: "dd_content" }, onChange)
+    .on("postgres_changes", { event: "*", schema: "public", table: "dd_categories" }, onChange)
+    .subscribe();
+}
+
+function dbSubscribeToOrders(onInsert) {
+  if (!supabaseClient) return null;
+  return supabaseClient.channel("dd_orders_live")
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "dd_orders" }, onInsert)
+    .subscribe();
+}

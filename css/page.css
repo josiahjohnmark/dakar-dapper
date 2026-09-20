@@ -1,0 +1,159 @@
+/* ==========================================================================
+   PAGE.CSS — shared styling for the plain content pages
+   (privacy, shipping & returns). Deliberately small and self-contained.
+   ========================================================================== */
+
+:root {
+  --p-bg: #F8F6F2;
+  --p-surface: #FFFFFF;
+  --p-text: #1A1A1A;
+  --p-sub: #5C584E;
+  --p-faint: #8A857A;
+  --p-gold: #B8965A;
+  --p-border: #E5E2DD;
+  --p-ink: #14130E;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --p-bg: #121210;
+    --p-surface: #1C1B18;
+    --p-text: #F5F3EE;
+    --p-sub: #B6B2A8;
+    --p-faint: #837F76;
+    --p-gold: #D4B97C;
+    --p-border: #2E2C28;
+    --p-ink: #F5F3EE;
+  }
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body.page-body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--p-bg);
+  color: var(--p-text);
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+.page-head {
+  border-bottom: 1px solid var(--p-border);
+  background: var(--p-surface);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.page-head-inner {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+.page-head a.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: inherit; }
+.page-head img { width: 34px; height: 34px; border-radius: 50%; background: var(--p-ink); padding: 4px; }
+.page-head strong {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 1.05rem;
+  letter-spacing: .06em;
+}
+.page-back {
+  margin-left: auto;
+  font-size: .82rem;
+  font-weight: 600;
+  color: var(--p-sub);
+  text-decoration: none;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 4px;
+}
+.page-back:hover { color: var(--p-text); }
+
+.page-wrap { max-width: 820px; margin: 0 auto; padding: 44px 20px 80px; }
+
+.page-kicker {
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--p-gold);
+  margin-bottom: 10px;
+}
+.page-wrap h1 {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: clamp(2rem, 7vw, 2.9rem);
+  font-weight: 600;
+  line-height: 1.15;
+  margin-bottom: 8px;
+}
+.page-updated { font-size: .84rem; color: var(--p-faint); margin-bottom: 36px; }
+
+.page-wrap h2 {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 36px 0 10px;
+  padding-top: 20px;
+  border-top: 1px solid var(--p-border);
+}
+.page-wrap h2:first-of-type { border-top: none; padding-top: 0; }
+.page-wrap h3 { font-size: 1rem; font-weight: 700; margin: 20px 0 6px; }
+
+.page-wrap p { margin-bottom: 14px; color: var(--p-sub); }
+.page-wrap strong { color: var(--p-text); font-weight: 600; }
+.page-wrap a { color: var(--p-text); text-underline-offset: 3px; }
+
+.page-wrap ul { margin: 0 0 16px 0; padding-left: 20px; color: var(--p-sub); }
+.page-wrap li { margin-bottom: 7px; }
+
+.page-note {
+  background: var(--p-surface);
+  border: 1px solid var(--p-border);
+  border-left: 3px solid var(--p-gold);
+  border-radius: 10px;
+  padding: 16px 18px;
+  margin: 22px 0;
+}
+.page-note p:last-child { margin-bottom: 0; }
+
+.page-table { width: 100%; border-collapse: collapse; margin: 16px 0 22px; font-size: .9rem; }
+.page-table th, .page-table td {
+  padding: 11px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--p-border);
+}
+.page-table th {
+  font-size: .72rem;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--p-faint);
+  font-weight: 700;
+}
+.page-table td { color: var(--p-sub); }
+.page-table td:last-child { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+.page-foot {
+  border-top: 1px solid var(--p-border);
+  margin-top: 48px;
+  padding-top: 24px;
+  font-size: .85rem;
+  color: var(--p-faint);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+}
+.page-foot a { color: var(--p-sub); }
+
+@media (max-width: 520px) {
+  .page-wrap { padding: 32px 18px 60px; }
+  .page-table { font-size: .84rem; }
+  .page-table th, .page-table td { padding: 9px 8px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}

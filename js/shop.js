@@ -258,7 +258,7 @@ function renderShop() {
     const inWish = wishlist.includes(p.id);
     const badgeHtml = isSoldOut
       ? `<div class="p-badge"><span class="badge-sold-out">Sold Out</span></div>`
-      : (p.badge ? `<div class="p-badge"><span class="${p.badgeType || 'tag-gold'}">${p.badge}</span></div>` : "");
+      : (p.badge ? `<div class="p-badge"><span class="${esc(p.badgeType || 'tag-gold')}">${esc(p.badge)}</span></div>` : "");
 
     const addBtnHtml = isSoldOut
       ? `<button class="p-action-btn add sold-out-btn" disabled>Sold Out</button>`
@@ -271,7 +271,7 @@ function renderShop() {
         <button class="heart-btn${inWish ? " active" : ""}" onclick="event.stopPropagation();toggleWish(${p.id});renderShop()" aria-label="Wishlist">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="${inWish ? '#fff' : 'none'}" stroke="${inWish ? '#fff' : 'currentColor'}" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
         </button>
-        <img class="img-main" src="${p.image}" alt="${p.name}" loading="lazy">
+        ${productPicture(p.image, p.name, "img-main", 600, 750)}
         <div class="p-actions">
           <button class="p-action-btn view" onclick="event.stopPropagation();openProduct(${p.id})">Quick View</button>
           ${addBtnHtml}
@@ -279,11 +279,11 @@ function renderShop() {
       </div>
       <div class="p-info">
         <div class="p-info-top">
-          <span class="p-cat">${p.category}</span>
-          <span class="p-rating">★ ${p.rating}</span>
+          <span class="p-cat">${esc(p.category)}</span>
+          <span class="p-rating">★ ${esc(p.rating)}</span>
         </div>
-        <h3 class="p-name">${p.name}</h3>
-        <p class="p-sub">${p.subtitle || ""}</p>
+        <h3 class="p-name">${esc(p.name)}</h3>
+        <p class="p-sub">${esc(p.subtitle || "")}</p>
         <div class="p-colors">${(p.colors || []).slice(0, 3).map(c => `<span class="p-swatch" style="background:${c}"></span>`).join("")}</div>
         <div class="p-prices">
           <span class="p-price">${formatPrice(p.price)}</span>
@@ -346,8 +346,8 @@ function renderActiveFilters() {
     <span class="active-filters-title">Active Filters:</span>
     ${pills.map(p => `
       <span class="filter-pill">
-        ${p.label}
-        <span class="filter-pill-remove" onclick="removeFilter('${p.type}')" title="Remove filter">✕</span>
+        ${esc(p.label)}
+        <span class="filter-pill-remove" onclick="removeFilter('${esc(p.type)}')" title="Remove filter">✕</span>
       </span>
     `).join("")}
     <button class="clear-all-btn" onclick="clearAllFilters()">Clear All</button>

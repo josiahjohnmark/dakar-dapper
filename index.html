@@ -5,8 +5,37 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dakar Dapper — Proper Men's Fashion Line</title>
   <meta name="description" content="Discover luxury menswear and accessories by Dakar Dapper. Premium blazers, tailored trousers, leather goods and more.">
+  <link rel="canonical" href="https://dakardapper.com/">
+
+  <!-- Social sharing (WhatsApp, Instagram, X, Facebook) -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Dakar Dapper">
+  <meta property="og:title" content="Dakar Dapper — Proper Men's Fashion Line">
+  <meta property="og:description" content="Premium menswear and accessories, curated in Lagos and delivered across Nigeria.">
+  <meta property="og:url" content="https://dakardapper.com/">
+  <meta property="og:image" content="https://dakardapper.com/assets/hero.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:locale" content="en_NG">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Dakar Dapper — Proper Men's Fashion Line">
+  <meta name="twitter:description" content="Premium menswear and accessories, curated in Lagos and delivered across Nigeria.">
+  <meta name="twitter:image" content="https://dakardapper.com/assets/hero.jpg">
+  <meta name="theme-color" content="#F8F6F2">
+
+  <!-- Fonts: preconnect + direct link beats an @import inside the stylesheet -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preload" as="style"
+        href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600;700;800&display=swap">
+  <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600;700;800&display=swap"
+        media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600;700;800&display=swap"></noscript>
+
+  <link rel="preconnect" href="https://cqcyxiqsxcuqikvbkcrs.supabase.co" crossorigin>
   <link rel="stylesheet" href="css/style.css">
-  <link rel="stylesheet" href="css/admin.css">
+  <link rel="preload" as="image" href="assets/hero.webp" type="image/webp" fetchpriority="high">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16x16.png">
@@ -21,7 +50,7 @@
       <span></span><span></span><span></span>
     </button>
     <a href="#" class="logo" id="logo-link">
-      <img src="assets/dakar-dapper-dd.png" alt="Dakar Dapper Logo" class="logo-img">
+      <img src="assets/dakar-dapper-dd.png" alt="Dakar Dapper Logo" class="logo-img" loading="lazy" decoding="async">
       <div class="logo-text">
         <span class="logo-name serif">DAKAR DAPPER</span>
         <span class="logo-tag">Proper Men's Fashion Line</span>
@@ -74,7 +103,7 @@
 <div class="mobile-drawer" id="mobile-drawer">
   <div class="mobile-drawer-head">
     <a href="#" class="logo">
-      <img src="assets/dakar-dapper-dd.png" alt="Logo" class="logo-img">
+      <img src="assets/dakar-dapper-dd.png" alt="Logo" class="logo-img" loading="lazy" decoding="async">
       <div class="logo-text"><span class="logo-name serif">DAKAR DAPPER</span></div>
     </a>
     <button id="mobile-close" aria-label="Close" style="font-size:1.5rem;color:var(--text-sub)">✕</button>
@@ -102,7 +131,14 @@
 
 <!-- ═══ Hero ═══ -->
 <section class="hero" id="home">
-  <div class="hero-bg"><img src="assets/hero.jpg" alt="Dakar Dapper Editorial"></div>
+  <div class="hero-bg">
+      <picture>
+        <source type="image/webp" srcset="assets/hero-800.webp 800w, assets/hero-1400.webp 1400w, assets/hero.webp 2000w"
+                sizes="100vw">
+        <img src="assets/hero.jpg" alt="Dakar Dapper editorial" width="2000" height="1333"
+             fetchpriority="high" decoding="async">
+      </picture>
+    </div>
   <div class="hero-overlay"></div>
   <div class="hero-fade-out" id="hero-fade-out"></div>
   <div class="hero-vignette" id="hero-vignette"></div>
@@ -131,7 +167,7 @@
         <div class="trust-icon">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 17H5a2 2 0 0 0-2 2 2 2 0 0 0 2 2h14a2 2 0 0 0 2-2 2 2 0 0 0-2-2h-4M9 17V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v12M9 17h6"/></svg>
         </div>
-        <div><strong>Free Delivery</strong><span>On orders over ₦150k</span></div>
+        <div><strong>Free Delivery</strong><span data-free-ship>On orders over ₦150,000</span></div>
       </div>
       <div class="trust-item">
         <div class="trust-icon">
@@ -158,7 +194,7 @@
     </div>
     <div class="cat-grid">
       <a href="shop.html?cat=wears" class="cat-card" data-cat="wears">
-        <img src="assets/graphic-tee.jpg" alt="Wears">
+        <img src="assets/graphic-tee.jpg" alt="Wears" loading="lazy" decoding="async">
         <div class="cat-card-overlay">
           <h3>Wears</h3>
           <p>T-Shirts, Shirts & Cargos</p>
@@ -166,7 +202,7 @@
         </div>
       </a>
       <a href="shop.html?cat=accessories" class="cat-card" data-cat="accessories">
-        <img src="assets/cuban-chain.jpg" alt="Accessories">
+        <img src="assets/cuban-chain.jpg" alt="Accessories" loading="lazy" decoding="async">
         <div class="cat-card-overlay">
           <h3>Accessories</h3>
           <p>Cuban Chains, Eyewear & Watches</p>
@@ -174,7 +210,7 @@
         </div>
       </a>
       <a href="shop.html?cat=footwear" class="cat-card" data-cat="footwear">
-        <img src="assets/sneakers.jpg" alt="Footwear">
+        <img src="assets/sneakers.jpg" alt="Footwear" loading="lazy" decoding="async">
         <div class="cat-card-overlay">
           <h3>Footwear</h3>
           <p>Chunky Runners & High-Tops</p>
@@ -216,7 +252,7 @@
         <a href="shop.html" class="btn btn-dark" style="align-self:flex-start;margin-top:8px">Shop Collection</a>
       </div>
       <div class="editorial-media">
-        <img src="assets/varsity-jacket.jpg" alt="Dakar Dapper Editorial">
+        <img src="assets/varsity-jacket.jpg" alt="Dakar Dapper Editorial" loading="lazy" decoding="async">
       </div>
     </div>
   </div>
@@ -241,7 +277,7 @@
     <div class="footer-grid">
       <div>
         <div class="footer-brand">
-          <img src="assets/dakar-dapper-dd.png" alt="Logo" class="logo-img">
+          <img src="assets/dakar-dapper-dd.png" alt="Logo" class="logo-img" loading="lazy" decoding="async">
           <div class="logo-text"><span class="logo-name serif" style="font-size:1rem;">DAKAR DAPPER</span></div>
         </div>
         <p style="margin-bottom:14px;line-height:1.6">Proper Men's Fashion Line — curated luxury menswear and accessories for the modern gentleman.</p>
@@ -252,16 +288,16 @@
       </div>
       <div>
         <h4>Company</h4>
-        <a href="#editorial">About Us</a><a href="#contact">Contact</a><a href="#">Shipping & Returns</a><a href="#">Privacy</a>
+        <a href="#editorial">About Us</a><a href="#contact">Contact</a><a href="shipping.html">Shipping &amp; Returns</a><a href="privacy.html">Privacy</a>
       </div>
       <div>
         <h4>Connect</h4>
-        <a href="#">Instagram</a><a href="#">Twitter / X</a><a href="https://wa.me/2349019603621?text=Hello%20Dakar%20Dapper" target="_blank" rel="noopener">WhatsApp</a><a href="#">Email Us</a>
+        <a href="#" data-social="instagram" rel="noopener">Instagram</a><a href="#" data-social="twitter" rel="noopener">Twitter / X</a><a href="https://wa.me/2349019603621?text=Hello%20Dakar%20Dapper" target="_blank" rel="noopener">WhatsApp</a><a href="#" data-social="email">Email Us</a>
       </div>
     </div>
     <div class="footer-bottom">
-      <span>&copy; 2025 Dakar Dapper. All rights reserved.</span>
-      <span>Made with ♥ for style</span>
+      <span>&copy; <span id="footer-year">2026</span> Dakar Dapper. All rights reserved.</span>
+      <span>Made with ♥ for style &middot; <a href="admin.html" rel="nofollow" style="opacity:.45" title="Store management">Manage</a></span>
     </div>
   </div>
 </footer>
@@ -287,7 +323,7 @@
     <div class="modal-grid">
       <div class="modal-gallery">
         <div class="modal-thumbs" id="modal-thumbs"></div>
-        <div class="modal-main" id="modal-main"><img id="modal-img" src="" alt=""><button class="modal-nav prev" id="gallery-prev">‹</button><button class="modal-nav next" id="gallery-next">›</button></div>
+        <div class="modal-main" id="modal-main"><img id="modal-img" src="" alt="" loading="lazy" decoding="async"><button class="modal-nav prev" id="gallery-prev">‹</button><button class="modal-nav next" id="gallery-next">›</button></div>
       </div>
       <div class="modal-info" id="modal-info"></div>
     </div>
@@ -310,20 +346,10 @@
 <div class="modal-wrap checkout-modal" id="checkout-modal">
   <div class="modal-card" id="checkout-card">
     <button class="modal-x" onclick="closeCheckout()">✕</button>
-    <div id="checkout-content">
-      <h2 style="font-family:var(--font-serif);font-size:1.5rem;margin-bottom:18px">Checkout</h2>
-      <div class="form-grid">
-        <div class="form-row"><div class="form-grp"><label>First Name</label><input type="text" placeholder="John" required></div><div class="form-grp"><label>Last Name</label><input type="text" placeholder="Doe" required></div></div>
-        <div class="form-grp"><label>Email</label><input type="email" placeholder="john@email.com" required></div>
-        <div class="form-grp"><label>Phone</label><input type="tel" placeholder="+234 703 322 3491" required></div>
-        <div class="form-grp"><label>Delivery Address</label><input type="text" placeholder="123 Victoria Island, Lagos" required></div>
-        <div class="form-row"><div class="form-grp"><label>City</label><input type="text" placeholder="Lagos" required></div><div class="form-grp"><label>State</label><select><option>Lagos</option><option>Abuja</option><option>Rivers</option><option>Oyo</option><option>Other</option></select></div></div>
-        <div class="subtotal-row" style="padding-top:10px;border-top:1px solid var(--border)"><span>Total</span><span id="checkout-total">₦0</span></div>
-        <button class="btn btn-dark buy-full" onclick="placeOrder()">Place Order</button>
-      </div>
-    </div>
+    <div id="checkout-content"></div>
   </div>
 </div>
+
 
 <!-- ═══ WhatsApp Widget ═══ -->
 <div class="wa-container" id="wa-container">
@@ -336,7 +362,7 @@
   <div class="wa-popup" id="wa-popup">
     <div class="wa-popup-head">
       <div class="wa-profile">
-        <div class="wa-avatar"><img src="assets/dakar-dapper-dd.png" alt="Dakar Dapper"></div>
+        <div class="wa-avatar"><img src="assets/dakar-dapper-dd.png" alt="Dakar Dapper" loading="lazy" decoding="async"></div>
         <div><h4>Dakar Dapper</h4><span>Usually replies in minutes</span></div>
       </div>
       <button class="wa-popup-close" id="wa-close">✕</button>
@@ -365,7 +391,7 @@
   <div class="modal-card">
     <button class="modal-x" id="auth-close">✕</button>
     <div class="auth-header">
-      <img src="assets/dakar-dapper-dd.png" alt="DD" class="logo-img">
+      <img src="assets/dakar-dapper-dd.png" alt="DD" class="logo-img" loading="lazy" decoding="async">
       <h2 id="auth-title">Welcome Back</h2>
       <p id="auth-subtitle">Sign in to your Dakar Dapper account</p>
     </div>
@@ -374,6 +400,7 @@
       <button class="auth-tab" data-tab="signup" id="tab-signup">Sign Up</button>
     </div>
     <!-- Sign In Form -->
+    <div class="a-error auth-error" hidden></div>
     <form class="auth-form" id="signin-form">
       <div class="auth-field"><label>Email</label><input type="email" placeholder="your@email.com" required></div>
       <div class="auth-field"><label>Password</label><input type="password" placeholder="••••••••" required></div>
@@ -384,23 +411,13 @@
       <button class="btn btn-dark buy-full" type="submit" style="margin-top:6px">Sign In</button>
     </form>
     <!-- Sign Up Form -->
+    <div class="a-error auth-error" hidden></div>
     <form class="auth-form" id="signup-form" style="display:none">
       <div class="auth-field"><label>Full Name</label><input type="text" placeholder="John Doe" required></div>
       <div class="auth-field"><label>Email</label><input type="email" placeholder="your@email.com" required></div>
       <div class="auth-field"><label>Password</label><input type="password" placeholder="Min 8 characters" required></div>
       <button class="btn btn-dark buy-full" type="submit" style="margin-top:6px">Create Account</button>
     </form>
-    <div class="auth-divider">or continue with</div>
-    <div class="auth-social">
-      <button class="auth-social-btn" type="button">
-        <svg viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
-        Google
-      </button>
-      <button class="auth-social-btn" type="button">
-        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
-        Apple
-      </button>
-    </div>
     <p class="auth-footer">By continuing, you agree to our <a href="#">Terms</a> & <a href="#">Privacy Policy</a></p>
   </div>
 </div>
@@ -411,7 +428,7 @@
     <button class="modal-x" id="nl-modal-close" onclick="closeNewsletterModal()" aria-label="Close">✕</button>
     <div class="nl-modal-inner">
       <div class="nl-modal-icon">
-        <img src="assets/dakar-dapper-dd.png" alt="Dakar Dapper" class="logo-img">
+        <img src="assets/dakar-dapper-dd.png" alt="Dakar Dapper" class="logo-img" loading="lazy" decoding="async">
       </div>
       <span class="gold nl-badge" id="nl-modal-badge">STAY IN STYLE</span>
       <h2 class="serif nl-title" id="nl-modal-title">Be the First to Know</h2>
@@ -425,10 +442,25 @@
 </div>
 
 <!-- ═══ JavaScript ═══ -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/supabase-config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="js/db.js"></script>
 <script src="js/products.js"></script>
 <script src="js/app.js"></script>
-<script src="js/admin.js"></script>
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "ClothingStore",
+  "name": "Dakar Dapper",
+  "description": "Premium men's wears and accessories, curated in Lagos and delivered nationwide.",
+  "url": "https://dakardapper.com/",
+  "image": "https://dakardapper.com/assets/hero.jpg",
+  "telephone": "+2349019603621",
+  "priceRange": "\u20A6\u20A6",
+  "address": { "@type": "PostalAddress", "addressLocality": "Lagos", "addressRegion": "Lagos", "addressCountry": "NG" },
+  "areaServed": { "@type": "Country", "name": "Nigeria" },
+  "sameAs": []
+}
+</script>
 </body>
 </html>

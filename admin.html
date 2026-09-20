@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#F4F2EE" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#121210" media="(prefers-color-scheme: dark)">
+  <title>Management Suite — Dakar Dapper</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="css/admin.css">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+</head>
+<body class="admin-body">
+
+<!-- ═══════════════════ LOGIN ═══════════════════ -->
+<div class="a-login" id="login-screen">
+  <div class="a-login-card">
+    <div class="a-login-mark"><img src="assets/dakar-dapper-dd.png" alt=""></div>
+    <h1>Management Suite</h1>
+    <p class="a-login-sub">Sign in to run the Dakar Dapper store.</p>
+
+    <div class="a-error" id="login-error" hidden></div>
+
+    <form id="login-form" autocomplete="on">
+      <div class="a-field">
+        <label for="login-email">Email</label>
+        <input class="a-input" id="login-email" type="email" inputmode="email"
+               autocomplete="username" required>
+      </div>
+      <div class="a-field">
+        <label for="login-pass">Password</label>
+        <input class="a-input" id="login-pass" type="password"
+               autocomplete="current-password" required>
+      </div>
+      <button class="a-btn a-btn-primary a-btn-full" type="submit" id="login-btn">
+        Sign In
+      </button>
+    </form>
+
+    <button class="a-btn a-btn-ghost a-btn-full" id="forgot-btn" style="margin-top:10px">
+      Forgot password?
+    </button>
+
+    <p style="font-size:.74rem;color:var(--a-text-3);text-align:center;margin-top:18px;line-height:1.5">
+      Access is restricted to authorised accounts.<br>Every action is recorded.
+    </p>
+  </div>
+</div>
+
+<!-- ═══════════════════ APP ═══════════════════ -->
+<div class="a-app" id="app-shell">
+
+  <header class="a-topbar">
+    <div class="a-topbar-mark"><img src="assets/dakar-dapper-dd.png" alt=""></div>
+    <div class="a-topbar-titles">
+      <strong id="topbar-title">Dashboard</strong>
+      <span id="topbar-sub">Dakar Dapper</span>
+    </div>
+    <button class="a-icon-btn" id="theme-btn" aria-label="Switch colour theme">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M6.3 17.7l-1.4 1.4M19.1 4.9l-1.4 1.4"/></svg>
+    </button>
+    <button class="a-icon-btn" id="refresh-btn" aria-label="Refresh data">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 0 1-9 9 9 9 0 0 1-9-9 9 9 0 0 1 9-9c2.5 0 4.7 1 6.3 2.7L21 8"/><path d="M21 3v5h-5"/></svg>
+    </button>
+  </header>
+
+  <main class="a-main">
+
+    <!-- ══ DASHBOARD ══ -->
+    <section class="a-pane active" id="pane-home">
+      <div class="a-pane-head">
+        <h2 id="greeting">Good day</h2>
+        <p id="greeting-sub">Here is how the store is doing.</p>
+      </div>
+
+      <div class="a-stats" id="stat-tiles"></div>
+
+      <div class="a-two-col">
+        <div>
+          <!-- Single-measure, single-series chart: no legend, the title names it. -->
+          <div class="a-card viz-root">
+            <div class="a-card-head">
+              <div>
+                <h3>Revenue, last 14 days</h3>
+                <span class="sub" id="chart-total"></span>
+              </div>
+              <button class="viz-toggle" id="chart-view-toggle" aria-expanded="false">Table</button>
+            </div>
+            <div id="chart-mount"></div>
+          </div>
+
+          <div class="a-card">
+            <div class="a-card-head"><h3>Best sellers</h3><span class="sub">by units sold</span></div>
+            <div id="top-products"></div>
+          </div>
+        </div>
+
+        <div>
+          <div class="a-card">
+            <div class="a-card-head"><h3>Needs your attention</h3></div>
+            <div id="attention-list"></div>
+          </div>
+
+          <div class="a-card">
+            <div class="a-card-head"><h3>Recent activity</h3></div>
+            <div id="activity-feed"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ ORDERS ══ -->
+    <section class="a-pane" id="pane-orders">
+      <div class="a-pane-head">
+        <h2>Orders</h2>
+        <p id="orders-count-line">Track and fulfil every order.</p>
+      </div>
+
+      <div class="a-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input class="a-input" id="order-search" type="search"
+               placeholder="Search name, phone or reference" autocomplete="off">
+      </div>
+
+      <div class="a-toolbar" id="order-filters"></div>
+      <div id="orders-list"></div>
+    </section>
+
+    <!-- ══ PRODUCTS ══ -->
+    <section class="a-pane" id="pane-products">
+      <div class="a-pane-head a-pane-head-row">
+        <div>
+          <h2>Products</h2>
+          <p id="products-count-line">Tap the stock buttons to restock instantly.</p>
+        </div>
+        <button class="a-btn a-btn-gold" id="add-product-btn">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          Add
+        </button>
+      </div>
+
+      <div class="a-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input class="a-input" id="product-search" type="search"
+               placeholder="Search products" autocomplete="off">
+      </div>
+
+      <div class="a-toolbar" id="product-filters"></div>
+      <div class="prod-list" id="products-list"></div>
+    </section>
+
+    <!-- ══ MORE ══ -->
+    <section class="a-pane" id="pane-more">
+      <div class="a-pane-head">
+        <h2>Store settings</h2>
+        <p>Categories, homepage words, and your audience.</p>
+      </div>
+
+      <div class="a-card">
+        <div class="a-card-head"><h3>Categories</h3>
+          <button class="a-btn a-btn-ghost a-btn-sm" id="add-cat-btn">+ Add</button>
+        </div>
+        <div id="categories-list"></div>
+      </div>
+
+      <div class="a-card">
+        <div class="a-card-head"><h3>Homepage words</h3>
+          <span class="sub">Saves live to the site</span>
+        </div>
+        <div id="cms-form"></div>
+      </div>
+
+      <div class="a-card">
+        <div class="a-card-head"><h3>Delivery &amp; shipping</h3></div>
+        <div id="shipping-form"></div>
+      </div>
+
+      <div class="a-card">
+        <div class="a-card-head"><h3>Newsletter list</h3>
+          <button class="a-btn a-btn-ghost a-btn-sm" id="export-subs-btn">Export CSV</button>
+        </div>
+        <div id="subscribers-list"></div>
+      </div>
+
+      <div class="a-card">
+        <div class="a-card-head"><h3>Security log</h3>
+          <span class="sub">Last 25 actions</span>
+        </div>
+        <div id="audit-list"></div>
+      </div>
+
+      <div class="a-card">
+        <div class="a-card-head"><h3>Account</h3></div>
+        <div class="a-list-row">
+          <div class="a-list-row-main">
+            <strong id="account-email">—</strong>
+            <span>Signed in as owner</span>
+          </div>
+        </div>
+        <button class="a-btn a-btn-danger a-btn-full" id="signout-btn" style="margin-top:14px">
+          Sign Out
+        </button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Bottom tabs / desktop rail -->
+  <nav class="a-tabbar" aria-label="Main">
+    <button class="a-tab active" data-pane="home">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 10 9-7 9 7v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg>
+      <span>Home</span>
+    </button>
+    <button class="a-tab" data-pane="orders">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+      <span>Orders</span>
+      <span class="tab-badge" id="orders-badge" hidden>0</span>
+    </button>
+    <button class="a-tab" data-pane="products">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></svg>
+      <span>Products</span>
+    </button>
+    <button class="a-tab" data-pane="more">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <span>More</span>
+    </button>
+  </nav>
+</div>
+
+<!-- ═══════════════════ SHEETS ═══════════════════ -->
+<div class="a-sheet-backdrop" id="sheet-backdrop"></div>
+
+<div class="a-sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" inert>
+  <div class="a-sheet-grip"></div>
+  <div class="a-sheet-head">
+    <h3 id="sheet-title">Details</h3>
+    <button class="a-icon-btn" id="sheet-close" aria-label="Close">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
+  <div class="a-sheet-body" id="sheet-body"></div>
+  <div class="a-sheet-foot" id="sheet-foot"></div>
+</div>
+
+<div class="a-toast-box" id="toast-box" role="status" aria-live="polite"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="js/db.js"></script>
+<script src="js/admin.js"></script>
+</body>
+</html>

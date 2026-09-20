@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Page Not Found — Dakar Dapper</title>
+  <meta name="robots" content="noindex">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Inter:wght@400;600&display=swap">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png">
+  <style>
+    :root { --bg:#F8F6F2; --text:#1A1A1A; --sub:#6B6B6B; --gold:#B8965A; --border:#E5E2DD; }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) { --bg:#121210; --text:#F5F3EE; --sub:#B6B2A8; --gold:#D4B97C; --border:#2E2C28; }
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--bg); color: var(--text);
+      min-height: 100dvh; display: grid; place-items: center;
+      padding: 32px 16px; text-align: center; line-height: 1.6;
+    }
+    .mark { width: 60px; height: 60px; margin: 0 auto 24px; border-radius: 50%; background: #14130E; padding: 8px; }
+    .mark img { width: 100%; height: 100%; object-fit: contain; }
+    .code { font-size: .74rem; font-weight: 600; letter-spacing: .22em; text-transform: uppercase; color: var(--gold); margin-bottom: 10px; }
+    h1 { font-family: 'Cormorant Garamond', Georgia, serif; font-size: clamp(2rem, 8vw, 3rem); font-weight: 600; line-height: 1.15; margin-bottom: 12px; }
+    p { color: var(--sub); max-width: 42ch; margin: 0 auto 28px; font-size: .95rem; }
+    .btns { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+    a.btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-height: 48px; padding: 13px 28px; border-radius: 8px;
+      font-size: .82rem; font-weight: 600; letter-spacing: .08em;
+      text-transform: uppercase; text-decoration: none;
+      transition: transform .15s;
+    }
+    a.btn:active { transform: scale(.97); }
+    .btn-dark { background: #14130E; color: #fff; }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .btn-dark { background: #F5F3EE; color: #14130E; } }
+    .btn-out { border: 1px solid var(--border); color: var(--text); }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="mark"><img src="assets/dakar-dapper-dd.png" alt="Dakar Dapper"></div>
+    <div class="code">Error 404</div>
+    <h1>This piece isn't<br>in the collection</h1>
+    <p>The page you're looking for has moved or never existed. Let's get you back to something worth wearing.</p>
+    <div class="btns">
+      <a class="btn btn-dark" href="/">Back to Home</a>
+      <a class="btn btn-out" href="/shop.html">Browse the Shop</a>
+    </div>
+  </main>
+</body>
+</html>

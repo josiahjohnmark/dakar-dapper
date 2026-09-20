@@ -2,9 +2,65 @@
    APP.JS — Dakar Dapper Main Application
    ========================================================================== */
 
+/* ── SECURITY HELPERS ──────────────────────────────────────────────────
+   Every value that reaches innerHTML passes through esc(). Product copy is
+   owner-editable, so it must never be trusted as markup.
+   ────────────────────────────────────────────────────────────────────── */
+function esc(v) {
+  return String(v == null ? "" : v)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+/* Safe for src/href: blocks javascript: and data: payloads. */
+function escUrl(v) {
+  const s = String(v == null ? "" : v).trim();
+  if (/^(javascript|data|vbscript):/i.test(s)) return "";
+  return esc(s);
+}
+/* Only allow known-good CSS colour values into style attributes. */
+function escColor(v) {
+  const s = String(v == null ? "" : v).trim();
+  return /^(#[0-9a-f]{3,8}|rgba?\([\d\s.,%]+\)|[a-z]+)$/i.test(s) ? s : "transparent";
+}
+
+/* Headline copy may use a few decorative tags. Everything else is escaped,
+   so CMS text can never introduce script or event handlers. */
+function safeRichText(v) {
+  return esc(v)
+    .replace(/&lt;(\/?)(em|strong|b|i|br)\s*\/?&gt;/gi, (m, slash, tag) =>
+      "<" + slash + tag.toLowerCase() + ">");
+}
+
+/* Local assets all have a WebP sibling (~60% smaller). Uploaded images from
+   Supabase Storage do not, so those fall back to a plain <img>. */
+const IMG_FALLBACK = "assets/dakar-dapper-dd.png";
+
+function productPicture(src, alt, cls, w, h, eager) {
+  const url = escUrl(src);
+  const loading = eager ? 'fetchpriority="high"' : 'loading="lazy"';
+  // A product whose image path is wrong should still show the brand mark,
+  // never a broken-image icon.
+  const onerr = `this.onerror=null;this.src='${IMG_FALLBACK}';this.classList.add('img-fallback');` +
+                `if(this.parentElement.tagName==='PICTURE'){const s=this.parentElement.querySelector('source');if(s)s.remove();}`;
+  const img = `<img class="${cls}" src="${url}" alt="${esc(alt)}" ${loading} decoding="async" ` +
+              `width="${w}" height="${h}" onerror="${onerr}">`;
+  if (!/^assets\/.+\.jpe?g$/i.test(String(src || ""))) return img;
+  const webp = escUrl(String(src).replace(/\.jpe?g$/i, ".webp"));
+  return `<picture><source type="image/webp" srcset="${webp}">${img}</picture>`;
+}
+
+function readJSON(key, fallback) {
+  try {
+    const v = JSON.parse(localStorage.getItem(key) || "null");
+    return Array.isArray(v) || (v && typeof v === "object") ? v : fallback;
+  } catch { return fallback; }
+}
+
 /* ── STATE ─────────────────────────────────────────────────────────── */
-let cart = JSON.parse(localStorage.getItem("dd_cart") || "[]");
-let wishlist = JSON.parse(localStorage.getItem("dd_wish") || "[]");
+let cart = readJSON("dd_cart", []);
+let wishlist = readJSON("dd_wish", []);
+let currentUser = null;
+let shippingRates = [];
 let activeFilter = "all";
 let currentModal = null;
 let galleryIndex = 0;
@@ -32,10 +88,9 @@ document.addEventListener("DOMContentLoaded", () => {
   renderWishlist();
   initNewsletterTriggers();
 
-  // Pull live data from Supabase cloud database
-  if (typeof syncFromSupabase === "function") {
-    syncFromSupabase();
-  }
+  // Pull live data from Supabase, then keep it live.
+  if (typeof syncFromSupabase === "function") syncFromSupabase();
+  if (typeof startRealtimeCatalog === "function") startRealtimeCatalog();
 });
 
 /* ── PERSIST ───────────────────────────────────────────────────────── */
@@ -180,14 +235,19 @@ function renderProducts(filter, query) {
     const hasDisc = (p.showDiscount !== false) && p.originalPrice && disc > 0;
     const isSoldOut = p.isOutOfStock || (p.stock !== undefined && p.stock <= 0);
     const inWish = wishlist.includes(p.id);
+    const lowStock = !isSoldOut && p.stock > 0 && p.stock <= 3;
     return `
     <div class="p-card${isSoldOut ? ' is-sold-out' : ''}" data-id="${p.id}" onclick="openProduct(${p.id})">
       <div class="p-card-media">
-        ${isSoldOut ? `<div class="p-badge"><span class="badge-sold-out">SOLD OUT</span></div>` : (p.badge ? `<div class="p-badge"><span class="${p.badgeType}">${p.badge}</span></div>` : "")}
-        <button class="heart-btn${inWish ? " active" : ""}" onclick="event.stopPropagation();toggleWish(${p.id})" aria-label="Wishlist">
+        ${isSoldOut
+          ? `<div class="p-badge"><span class="badge-sold-out">SOLD OUT</span></div>`
+          : lowStock
+            ? `<div class="p-badge"><span class="tag-low">Only ${p.stock} left</span></div>`
+            : (p.badge ? `<div class="p-badge"><span class="${esc(p.badgeType)}">${esc(p.badge)}</span></div>` : "")}
+        <button class="heart-btn${inWish ? " active" : ""}" onclick="event.stopPropagation();toggleWish(${p.id})" aria-label="${inWish ? "Remove from" : "Add to"} wishlist" aria-pressed="${inWish}">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="${inWish ? '#fff' : 'none'}" stroke="${inWish ? '#fff' : 'currentColor'}" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
         </button>
-        <img class="img-main" src="${p.image}" alt="${p.name}" loading="lazy">
+        ${productPicture(p.image, p.name, "img-main", 600, 750)}
         <div class="p-actions">
           <button class="p-action-btn view" onclick="event.stopPropagation();openProduct(${p.id})">Quick View</button>
           <button class="p-action-btn add" onclick="event.stopPropagation();${isSoldOut ? '' : `addToCart(${p.id})`}"${isSoldOut ? ' disabled style="opacity:0.6;cursor:not-allowed"' : ''}>${isSoldOut ? 'Sold Out' : '+ Bag'}</button>
@@ -195,12 +255,12 @@ function renderProducts(filter, query) {
       </div>
       <div class="p-info">
         <div class="p-info-top">
-          <span class="p-cat">${p.category}</span>
-          <span class="p-rating">★ ${p.rating}</span>
+          <span class="p-cat">${esc(p.category)}</span>
+          <span class="p-rating">★ ${esc(p.rating)}</span>
         </div>
-        <h3 class="p-name">${p.name}</h3>
-        <p class="p-sub">${p.subtitle}</p>
-        <div class="p-colors">${(p.colors || []).slice(0, 3).map(c => `<span class="p-swatch" style="background:${c}"></span>`).join("")}</div>
+        <h3 class="p-name">${esc(p.name)}</h3>
+        <p class="p-sub">${esc(p.subtitle)}</p>
+        <div class="p-colors">${(p.colors || []).slice(0, 3).map(c => `<span class="p-swatch" style="background:${escColor(c)}"></span>`).join("")}</div>
         <div class="p-prices">
           <span class="p-price">${formatPrice(p.price)}</span>
           ${hasDisc ? `<span class="p-orig">${formatPrice(p.originalPrice)}</span><span class="p-disc">-${disc}%</span>` : ""}
@@ -326,20 +386,29 @@ function renderCart() {
     return;
   }
 
+  // Drop any cart line whose product has since been removed from the catalogue.
+  const missing = cart.filter(item => !PRODUCTS.find(x => x.id === item.id));
+  if (missing.length) {
+    cart = cart.filter(item => PRODUCTS.find(x => x.id === item.id));
+    saveCart();
+    if (!cart.length) return renderCart();
+  }
+
   let total = 0;
   container.innerHTML = cart.map((item, i) => {
     const p = PRODUCTS.find(x => x.id === item.id);
     const lineTotal = p.price * item.qty;
     total += lineTotal;
+    const atMax = p.stock > 0 && item.qty >= p.stock;
     return `
     <div class="cart-item">
-      <div class="cart-item-img"><img src="${p.image}" alt="${p.name}"></div>
+      <div class="cart-item-img">${productPicture(p.image, p.name, "", 80, 100)}</div>
       <div class="cart-item-body">
-        <div class="cart-item-top"><span class="cat">${p.category}</span><button class="cart-item-del" onclick="removeFromCart(${i})">✕</button></div>
-        <h4>${p.name}</h4>
-        <span class="cart-item-meta">${item.size} · ${item.color}</span>
+        <div class="cart-item-top"><span class="cat">${esc(p.category)}</span><button class="cart-item-del" onclick="removeFromCart(${i})" aria-label="Remove ${esc(p.name)} from bag">✕</button></div>
+        <h4>${esc(p.name)}</h4>
+        <span class="cart-item-meta">${esc(item.size)} · ${esc(item.color)}</span>
         <div class="cart-item-bot">
-          <div class="qty"><button onclick="updateQty(${i},-1)">−</button><span>${item.qty}</span><button onclick="updateQty(${i},1)">+</button></div>
+          <div class="qty"><button onclick="updateQty(${i},-1)" aria-label="Decrease quantity">−</button><span>${item.qty}</span><button onclick="updateQty(${i},1)"${atMax ? ' disabled title="No more in stock"' : ''} aria-label="Increase quantity">+</button></div>
           <span class="cart-item-price">${formatPrice(lineTotal)}</span>
         </div>
       </div>
@@ -350,7 +419,7 @@ function renderCart() {
   document.getElementById("cart-total").textContent = formatPrice(total);
 
   // Shipping meter
-  const thresh = 150000;
+  const thresh = freeShipMin();
   const pct = Math.min(total / thresh * 100, 100);
   document.getElementById("ship-fill").style.width = pct + "%";
   document.getElementById("ship-fill").classList.toggle("done", total >= thresh);
@@ -383,11 +452,12 @@ function renderWishlist() {
 
   container.innerHTML = wishlist.map(id => {
     const p = PRODUCTS.find(x => x.id === id);
+    if (!p) return "";
     return `
     <div class="wish-item">
-      <div class="wish-item-img" onclick="closeAllDrawers();openProduct(${p.id})"><img src="${p.image}" alt="${p.name}"></div>
+      <div class="wish-item-img" onclick="closeAllDrawers();openProduct(${p.id})">${productPicture(p.image, p.name, "", 80, 100)}</div>
       <div class="wish-item-info">
-        <h4 onclick="closeAllDrawers();openProduct(${p.id})">${p.name}</h4>
+        <h4 onclick="closeAllDrawers();openProduct(${p.id})">${esc(p.name)}</h4>
         <div class="wish-item-price">${formatPrice(p.price)}</div>
         <div class="wish-item-actions">
           <button class="btn btn-sm btn-dark" onclick="addToCart(${p.id});toggleWish(${p.id})">Add to Bag</button>
@@ -408,7 +478,8 @@ function openProduct(id) {
 
   // Gallery
   document.getElementById("modal-img").src = p.image;
-  document.getElementById("modal-thumbs").innerHTML = `<div class="modal-thumb active" onclick="setGallery(0)"><img src="${p.image}" alt=""></div>`;
+  document.getElementById("modal-img").alt = p.name;
+  document.getElementById("modal-thumbs").innerHTML = `<div class="modal-thumb active" onclick="setGallery(0)"><img src="${escUrl(p.image)}" alt="" loading="lazy"></div>`;
 
   // Info
   const disc = p.originalPrice ? Math.round((1 - p.price / p.originalPrice) * 100) : 0;
@@ -419,28 +490,28 @@ function openProduct(id) {
 
   document.getElementById("modal-info").innerHTML = `
     <div class="modal-tags">
-      <span class="t-light">${p.category}</span>
-      ${isSoldOut ? `<span class="badge-sold-out">SOLD OUT</span>` : (p.badge ? `<span class="t-dark">${p.badge}</span>` : "")}
+      <span class="t-light">${esc(p.category)}</span>
+      ${isSoldOut ? `<span class="badge-sold-out">SOLD OUT</span>` : (p.badge ? `<span class="t-dark">${esc(p.badge)}</span>` : "")}
     </div>
-    <h2 class="modal-title">${p.name}</h2>
-    <p class="modal-subtitle">${p.subtitle}</p>
+    <h2 class="modal-title">${esc(p.name)}</h2>
+    <p class="modal-subtitle">${esc(p.subtitle)}</p>
     <div class="modal-stars">
       <span class="stars">${starsStr}</span>
-      <span>${p.rating || 5.0} (${p.reviews || 1} reviews)</span>
+      <span>${esc(p.rating || 5.0)} (${esc(p.reviews || 0)} reviews)</span>
       <span class="${isSoldOut ? 'out-of-stock' : 'in-stock'}" style="${isSoldOut ? 'color:#ef4444;font-weight:600' : ''}">• ${isSoldOut ? 'Sold Out' : 'In Stock'}</span>
     </div>
     <div class="modal-price-row">
       <span class="modal-price">${formatPrice(p.price)}</span>
       ${hasDisc ? `<span class="modal-strike">${formatPrice(p.originalPrice)}</span><span class="p-disc">-${disc}%</span>` : ""}
     </div>
-    <p class="modal-desc">${p.description}</p>
+    <p class="modal-desc">${esc(p.description)}</p>
     <div class="select-group">
-      <div class="select-label">Color — <span id="sel-color-name">${(p.colorNames && p.colorNames[0]) || 'Standard'}</span></div>
-      <div class="color-opts">${(p.colors || ['#111']).map((c, i) => `<div class="color-opt${i === 0 ? ' active' : ''}" onclick="selectColor(this,${i})" data-index="${i}"><span class="color-dot" style="background:${c}"></span></div>`).join("")}</div>
+      <div class="select-label">Color — <span id="sel-color-name">${esc((p.colorNames && p.colorNames[0]) || 'Standard')}</span></div>
+      <div class="color-opts">${(p.colors || ['#111']).map((c, i) => `<div class="color-opt${i === 0 ? ' active' : ''}" onclick="selectColor(this,${i})" data-index="${i}"><span class="color-dot" style="background:${escColor(c)}"></span></div>`).join("")}</div>
     </div>
     <div class="select-group">
       <div class="select-label">Size <button class="size-guide-btn" onclick="openSizeGuide()">📏 Size Guide</button></div>
-      <div class="size-opts">${(p.sizes || ['One Size']).map((s, i) => `<button class="size-opt${i === 0 ? ' active' : ''}" onclick="selectSize(this)">${s}</button>`).join("")}</div>
+      <div class="size-opts">${(p.sizes || ['One Size']).map((s, i) => `<button class="size-opt${i === 0 ? ' active' : ''}" onclick="selectSize(this)">${esc(s)}</button>`).join("")}</div>
     </div>
     <div class="modal-actions">
       <div class="qty qty-lg"><button onclick="modalQty(-1)">−</button><span id="modal-qty">1</span><button onclick="modalQty(1)">+</button></div>
@@ -465,9 +536,9 @@ function openProduct(id) {
       <button class="tab-btn" onclick="switchTab('shipping',this)">Shipping</button>
     </div>
     <div class="tab-pane active" id="tab-details">
-      <ul class="detail-list">${p.details.map(d => `<li><span class="check">✓</span>${d}</li>`).join("")}</ul>
+      <ul class="detail-list">${(p.details||[]).map(d => `<li><span class="check">✓</span>${esc(d)}</li>`).join("")}</ul>
     </div>
-    <div class="tab-pane" id="tab-care"><p style="font-size:.9rem;color:var(--text-sub);line-height:1.6">${p.care}</p></div>
+    <div class="tab-pane" id="tab-care"><p style="font-size:.9rem;color:var(--text-sub);line-height:1.6">${esc(p.care)}</p></div>
     <div class="tab-pane" id="tab-shipping"><p style="font-size:.9rem;color:var(--text-sub);line-height:1.6">Free standard shipping on orders over ₦150,000. Standard delivery takes 3-5 business days within Lagos and 5-7 days nationwide. Express delivery available at checkout. All orders are tracked and insured.</p></div>
   `;
 
@@ -478,8 +549,8 @@ function openProduct(id) {
       <h3>You May Also Like</h3>
       <div class="related-grid">${related.map(r => `
         <div class="related-item" onclick="openProduct(${r.id})">
-          <div class="related-img"><img src="${r.image}" alt="${r.name}"></div>
-          <div><h4>${r.name}</h4><span class="price">${formatPrice(r.price)}</span></div>
+          <div class="related-img">${productPicture(r.image, r.name, "", 200, 250)}</div>
+          <div><h4>${esc(r.name)}</h4><span class="price">${formatPrice(r.price)}</span></div>
         </div>`).join("")}</div>`;
   } else {
     document.getElementById("related-section").innerHTML = "";
@@ -593,142 +664,231 @@ function switchTab(name, btn) {
 function openSizeGuide() { document.getElementById("size-modal").classList.add("open"); }
 function closeSizeGuide() { document.getElementById("size-modal").classList.remove("open"); }
 
-/* ── CHECKOUT ──────────────────────────────────────────────────────── */
-function openCheckout() {
-  closeAllDrawers();
-  const total = cart.reduce((s, item) => {
+/* -- CHECKOUT ----------------------------------------------------------
+   The browser collects details and shows an ESTIMATE. The authoritative
+   prices, shipping and total are recomputed by place_order() on the server,
+   so a tampered cart cannot change what is charged.
+   ---------------------------------------------------------------------- */
+
+const NG_STATES = ["Abia","Adamawa","Akwa Ibom","Anambra","Bauchi","Bayelsa","Benue",
+  "Borno","Cross River","Delta","Ebonyi","Edo","Ekiti","Enugu","FCT - Abuja","Gombe",
+  "Imo","Jigawa","Kaduna","Kano","Katsina","Kebbi","Kogi","Kwara","Lagos","Nasarawa",
+  "Niger","Ogun","Ondo","Osun","Oyo","Plateau","Rivers","Sokoto","Taraba","Yobe","Zamfara"];
+
+function freeShipMin() {
+  return (typeof SITE_CONTENT !== "undefined" && SITE_CONTENT && SITE_CONTENT.freeShipMin)
+    ? Number(SITE_CONTENT.freeShipMin) : 150000;
+}
+
+function cartSubtotal() {
+  return cart.reduce((s, item) => {
     const p = PRODUCTS.find(x => x.id === item.id);
-    return s + p.price * item.qty;
+    return s + (p ? p.price * item.qty : 0);
   }, 0);
-  document.getElementById("checkout-total").textContent = formatPrice(total);
-  document.getElementById("checkout-content").querySelector(".form-grid").style.display = "flex";
-  const orderDone = document.querySelector(".order-done");
-  if (orderDone) orderDone.remove();
+}
+
+function shippingFor(state, subtotal) {
+  if (subtotal >= freeShipMin()) return 0;
+  const hit = shippingRates.find(r => r.state === state);
+  return hit ? Number(hit.fee) : 5000;
+}
+
+function openCheckout() {
+  if (!cart.length) { showToast("Your bag is empty."); return; }
+  closeAllDrawers();
+
+  const d = readJSON("dd_customer", {});
+  const subtotal = cartSubtotal();
+
+  document.getElementById("checkout-content").innerHTML = `
+    <h2 class="checkout-heading">Checkout</h2>
+    <p class="checkout-sub">Delivery details &mdash; we will confirm your order on WhatsApp.</p>
+    <form class="form-grid" id="checkout-form" novalidate autocomplete="on">
+      <div class="form-row">
+        <div class="form-grp">
+          <label for="co-first">First Name</label>
+          <input id="co-first" name="firstName" type="text" autocomplete="given-name" required value="${esc(d.firstName || "")}">
+          <span class="field-err" data-for="co-first"></span>
+        </div>
+        <div class="form-grp">
+          <label for="co-last">Last Name</label>
+          <input id="co-last" name="lastName" type="text" autocomplete="family-name" required value="${esc(d.lastName || "")}">
+          <span class="field-err" data-for="co-last"></span>
+        </div>
+      </div>
+      <div class="form-grp">
+        <label for="co-email">Email</label>
+        <input id="co-email" name="email" type="email" inputmode="email" autocomplete="email" required value="${esc(d.email || "")}">
+        <span class="field-err" data-for="co-email"></span>
+      </div>
+      <div class="form-grp">
+        <label for="co-phone">Phone (WhatsApp)</label>
+        <input id="co-phone" name="phone" type="tel" inputmode="tel" autocomplete="tel" required value="${esc(d.phone || "")}">
+        <span class="field-err" data-for="co-phone"></span>
+      </div>
+      <div class="form-grp">
+        <label for="co-address">Delivery Address</label>
+        <input id="co-address" name="address" type="text" autocomplete="street-address" required value="${esc(d.address || "")}">
+        <span class="field-err" data-for="co-address"></span>
+      </div>
+      <div class="form-row">
+        <div class="form-grp">
+          <label for="co-city">City</label>
+          <input id="co-city" name="city" type="text" autocomplete="address-level2" required value="${esc(d.city || "")}">
+          <span class="field-err" data-for="co-city"></span>
+        </div>
+        <div class="form-grp">
+          <label for="co-state">State</label>
+          <select id="co-state" name="state" autocomplete="address-level1" required>
+            ${NG_STATES.map(st => `<option value="${esc(st)}"${(d.state || "Lagos") === st ? " selected" : ""}>${esc(st)}</option>`).join("")}
+          </select>
+        </div>
+      </div>
+      <div class="form-grp">
+        <label for="co-note">Delivery note <span class="opt">(optional)</span></label>
+        <input id="co-note" name="note" type="text" placeholder="Landmark, gate colour, best time to call">
+      </div>
+
+      <div class="checkout-summary">
+        <div class="sum-row"><span>Subtotal</span><span id="co-subtotal">${formatPrice(subtotal)}</span></div>
+        <div class="sum-row"><span>Delivery</span><span id="co-shipping">&mdash;</span></div>
+        <div class="sum-row sum-total"><span>Total</span><span id="checkout-total">${formatPrice(subtotal)}</span></div>
+        <p class="sum-note">Your final total is confirmed by our server when you place the order.</p>
+      </div>
+
+      <div class="checkout-error" id="checkout-error" role="alert" hidden></div>
+      <button class="btn btn-dark buy-full" type="submit" id="place-order-btn">Place Order</button>
+      <p class="checkout-trust">Your details are sent over an encrypted connection.</p>
+    </form>`;
+
+  document.getElementById("checkout-form").addEventListener("submit", placeOrder);
+  document.getElementById("co-state").addEventListener("change", refreshCheckoutTotals);
+  refreshCheckoutTotals();
+
   document.getElementById("checkout-modal").classList.add("open");
   document.body.classList.add("no-scroll");
 }
 
-function closeCheckout() {
-  const wasOrderDone = document.querySelector(".order-done");
-  document.getElementById("checkout-modal").classList.remove("open");
-  document.body.classList.remove("no-scroll");
-  if (wasOrderDone) {
-    cart = [];
-    saveCart();
-    renderCart();
-    setTimeout(() => {
-      openNewsletterModal("postshop");
-    }, 450);
-  }
+function refreshCheckoutTotals() {
+  const stateEl = document.getElementById("co-state");
+  if (!stateEl) return;
+  const subtotal = cartSubtotal();
+  const ship = shippingFor(stateEl.value, subtotal);
+  const sEl = document.getElementById("co-subtotal");
+  const hEl = document.getElementById("co-shipping");
+  const tEl = document.getElementById("checkout-total");
+  if (sEl) sEl.textContent = formatPrice(subtotal);
+  if (hEl) hEl.textContent = ship === 0 ? "FREE" : formatPrice(ship);
+  if (tEl) tEl.textContent = formatPrice(subtotal + ship);
 }
 
-function placeOrder() {
-  const emailField = document.querySelector("#checkout-content input[type='email']");
-  if (emailField && emailField.value) {
-    userEmailFromCheckout = emailField.value.trim();
-  }
+function closeCheckout() {
+  document.getElementById("checkout-modal").classList.remove("open");
+  document.body.classList.remove("no-scroll");
+}
 
-  // Deduct private inventory stock for purchased items
-  cart.forEach(item => {
-    const p = PRODUCTS.find(x => x.id === item.id);
-    if (p) {
-      const currentStock = (p.stock !== undefined) ? p.stock : 10;
-      p.stock = Math.max(0, currentStock - item.qty);
-      if (p.stock <= 0) {
-        p.isOutOfStock = true;
-      }
-      if (typeof dbDecrementStock === "function") {
-        dbDecrementStock(item.id, item.qty);
-      }
-    }
-  });
+function setFieldError(id, message) {
+  const span = document.querySelector('.field-err[data-for="' + id + '"]');
+  const input = document.getElementById(id);
+  if (span) span.textContent = message || "";
+  if (input) input.classList.toggle("invalid", !!message);
+}
 
-  // Calculate totals and gather customer info
-  const subtotal = cart.reduce((s, item) => {
-    const p = PRODUCTS.find(x => x.id === item.id);
-    return s + (p ? p.price * item.qty : 0);
-  }, 0);
-  const shipping = subtotal >= 150000 ? 0 : 5000;
-  const total = subtotal + shipping;
+function validateCheckout(v) {
+  let firstBad = null;
+  const fail = (id, msg) => { setFieldError(id, msg); if (!firstBad) firstBad = id; };
 
-  const form = document.querySelector("#checkout-content .form-grid");
-  const inputs = form ? form.querySelectorAll("input, select") : [];
-  let customerName = "Customer";
-  let customerPhone = "";
-  let customerAddr = "";
-  let customerCity = "";
-  let customerState = "";
+  ["co-first","co-last","co-email","co-phone","co-address","co-city"].forEach(id => setFieldError(id, ""));
 
-  inputs.forEach(input => {
-    const ph = (input.placeholder || "").toLowerCase();
-    const type = (input.type || "").toLowerCase();
-    const val = (input.value || "").trim();
-    if (ph.includes("first") || ph.includes("last") || ph.includes("name")) {
-      customerName = customerName === "Customer" ? val : customerName + " " + val;
-    } else if (type === "tel" || ph.includes("phone")) {
-      customerPhone = val;
-    } else if (ph.includes("address")) {
-      customerAddr = val;
-    } else if (ph.includes("city")) {
-      customerCity = val;
-    } else if (ph.includes("state")) {
-      customerState = val;
-    }
-  });
+  if (v.firstName.length < 2) fail("co-first", "Please enter your first name.");
+  if (v.lastName.length < 2) fail("co-last", "Please enter your last name.");
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v.email)) fail("co-email", "Enter a valid email address.");
+  if (v.phone.replace(/\D/g, "").length < 10) fail("co-phone", "Enter a valid phone number.");
+  if (v.address.length < 6) fail("co-address", "Enter your full delivery address.");
+  if (v.city.length < 2) fail("co-city", "Enter your city.");
 
-  const orderData = {
-    name: customerName,
-    email: userEmailFromCheckout,
-    phone: customerPhone,
-    address: customerAddr,
-    city: customerCity,
-    state: customerState,
-    items: cart.map(i => {
-      const p = PRODUCTS.find(x => x.id === i.id);
-      return {
-        id: i.id,
-        name: p ? p.name : "Product",
-        price: p ? p.price : 0,
-        size: i.size,
-        color: i.color,
-        qty: i.qty
-      };
-    }),
-    subtotal,
-    shipping,
-    total
+  return firstBad;
+}
+
+async function placeOrder(e) {
+  if (e && e.preventDefault) e.preventDefault();
+
+  const btn = document.getElementById("place-order-btn");
+  const errBox = document.getElementById("checkout-error");
+  const val = id => { const el = document.getElementById(id); return el ? el.value.trim() : ""; };
+
+  const v = {
+    firstName: val("co-first"), lastName: val("co-last"),
+    email: val("co-email"), phone: val("co-phone"),
+    address: val("co-address"), city: val("co-city"),
+    state: val("co-state"), note: val("co-note")
   };
 
-  // Push order to Supabase
-  if (typeof dbCreateOrder === "function") {
-    dbCreateOrder(orderData);
+  const bad = validateCheckout(v);
+  if (bad) {
+    const el = document.getElementById(bad);
+    el.focus();
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    return false;
   }
 
-  if (typeof saveStoredProducts === "function") {
-    saveStoredProducts(PRODUCTS);
-  }
-  if (typeof renderProducts === "function") renderProducts();
-  if (typeof renderShop === "function") renderShop();
+  if (!cart.length) { showToast("Your bag is empty."); return false; }
 
-  const card = document.getElementById("checkout-content");
-  card.innerHTML = `
+  // Remember the customer for next time. We never hold card details.
+  localStorage.setItem("dd_customer", JSON.stringify(v));
+  userEmailFromCheckout = v.email;
+
+  errBox.hidden = true;
+  btn.disabled = true;
+  btn.textContent = "Placing your order...";
+
+  const result = await dbPlaceOrder({
+    name: v.firstName + " " + v.lastName,
+    email: v.email, phone: v.phone, address: v.address,
+    city: v.city, state: v.state, note: v.note,
+    items: cart
+  });
+
+  if (!result.ok) {
+    btn.disabled = false;
+    btn.textContent = "Place Order";
+    errBox.hidden = false;
+    errBox.textContent = result.message || "We could not place your order. Please try again.";
+    errBox.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (typeof syncFromSupabase === "function") syncFromSupabase();
+    return false;
+  }
+
+  const o = result.order || {};
+  const waText = encodeURIComponent(
+    "Hello Dakar Dapper, I just placed order " + o.order_number + ". Total: " + formatPrice(o.total) + ".");
+
+  document.getElementById("checkout-content").innerHTML = `
     <div class="order-done">
-      <div class="check-circle">✓</div>
-      <h2 style="font-family:var(--font-serif);font-size:1.6rem;margin-bottom:8px">Order Confirmed!</h2>
-      <p style="color:var(--text-sub);margin-bottom:20px">Thank you for shopping with Dakar Dapper. We'll send you a confirmation email and WhatsApp message shortly.</p>
-      <button class="btn btn-dark" onclick="handleOrderDoneContinue()">Continue Shopping</button>
+      <div class="check-circle">&#10003;</div>
+      <h2 class="checkout-heading">Order Confirmed</h2>
+      <p class="order-ref">Your reference<strong>${esc(o.order_number || "")}</strong></p>
+      <div class="order-totals">
+        <div class="sum-row"><span>Subtotal</span><span>${formatPrice(o.subtotal)}</span></div>
+        <div class="sum-row"><span>Delivery</span><span>${Number(o.shipping) === 0 ? "FREE" : formatPrice(o.shipping)}</span></div>
+        <div class="sum-row sum-total"><span>Total</span><span>${formatPrice(o.total)}</span></div>
+      </div>
+      <p class="order-next">Please save your reference. We will confirm delivery and payment with you on WhatsApp.</p>
+      <a class="btn btn-gold buy-full" href="https://wa.me/${esc(PHONE)}?text=${waText}" target="_blank" rel="noopener">Confirm on WhatsApp</a>
+      <button class="btn btn-dark buy-full" onclick="handleOrderDoneContinue()" style="margin-top:10px">Continue Shopping</button>
     </div>`;
-  showToast("Order placed successfully! 🎉");
+
+  cart = [];
+  saveCart();
+  renderCart();
+  showToast("Order " + o.order_number + " placed");
+  if (typeof syncFromSupabase === "function") syncFromSupabase();
+  return false;
 }
 
 function handleOrderDoneContinue() {
   closeCheckout();
-  cart = [];
-  saveCart();
-  renderCart();
-  setTimeout(() => {
-    openNewsletterModal("postshop");
-  }, 450);
+  setTimeout(() => openNewsletterModal("postshop"), 450);
 }
 
 /* ── AUTH MODAL ─────────────────────────────────────────────────────── */
@@ -752,21 +912,78 @@ function bindAuth() {
 
   // Form submissions
   const signinForm = document.getElementById("signin-form");
-  if (signinForm) {
-    signinForm.addEventListener("submit", e => {
-      e.preventDefault();
-      showToast("Welcome back! 👋");
-      closeAuth();
-    });
-  }
+  if (signinForm) signinForm.addEventListener("submit", handleCustomerSignIn);
   const signupForm = document.getElementById("signup-form");
-  if (signupForm) {
-    signupForm.addEventListener("submit", e => {
-      e.preventDefault();
-      showToast("Account created successfully! 🎉");
-      closeAuth();
-    });
-  }
+  if (signupForm) signupForm.addEventListener("submit", handleCustomerSignUp);
+
+  refreshAuthState();
+}
+
+function authError(formId, message) {
+  const box = document.querySelector(`#${formId} .auth-error`);
+  if (!box) return;
+  box.textContent = message || "";
+  box.hidden = !message;
+}
+
+async function handleCustomerSignIn(e) {
+  e.preventDefault();
+  const form = e.target;
+  const btn = form.querySelector('button[type="submit"]');
+  const email = form.querySelector('input[type="email"]').value.trim();
+  const password = form.querySelector('input[type="password"]').value;
+
+  authError("signin-form", "");
+  if (!email || !password) return authError("signin-form", "Enter your email and password.");
+
+  btn.disabled = true; btn.textContent = "Signing in…";
+  const res = await customerSignIn(email, password);
+  btn.disabled = false; btn.textContent = "Sign In";
+
+  if (!res.ok) return authError("signin-form", res.message);
+  showToast("Welcome back 👋");
+  closeAuth();
+  refreshAuthState();
+}
+
+async function handleCustomerSignUp(e) {
+  e.preventDefault();
+  const form = e.target;
+  const btn = form.querySelector('button[type="submit"]');
+  const name = form.querySelector('input[type="text"]').value.trim();
+  const email = form.querySelector('input[type="email"]').value.trim();
+  const password = form.querySelector('input[type="password"]').value;
+
+  authError("signup-form", "");
+  if (name.length < 2) return authError("signup-form", "Please enter your full name.");
+  if (password.length < 8) return authError("signup-form", "Password must be at least 8 characters.");
+
+  btn.disabled = true; btn.textContent = "Creating account…";
+  const res = await customerSignUp(email, password, name);
+  btn.disabled = false; btn.textContent = "Create Account";
+
+  if (!res.ok) return authError("signup-form", res.message);
+  showToast(res.needsConfirm ? "Check your email to confirm your account." : "Account created 🎉");
+  closeAuth();
+  refreshAuthState();
+}
+
+async function refreshAuthState() {
+  if (typeof customerCurrent !== "function") return;
+  currentUser = await customerCurrent();
+  const btn = document.getElementById("auth-toggle");
+  if (!btn) return;
+  const name = currentUser?.user_metadata?.full_name || currentUser?.email || "";
+  btn.setAttribute("aria-label", currentUser ? `Account — ${name}` : "Account");
+  btn.classList.toggle("signed-in", !!currentUser);
+}
+
+async function handleSignOut() {
+  await customerSignOut();
+  currentUser = null;
+  refreshAuthState();
+  closeAuth();
+  showToast("Signed out.");
 }
 
 function openAuth() {
@@ -858,19 +1075,29 @@ function sendWaMsg() {
 }
 
 /* ── NEWSLETTER (FOOTER & VIP MODAL) ──────────────────────────────── */
-function handleNewsletter(e) {
+async function handleNewsletter(e) {
   e.preventDefault();
   const form = e.target;
-  const email = form.querySelector("input").value;
-  if (email) {
-    localStorage.setItem("dd_subscribed", "true");
-    sessionStorage.setItem("dd_preshop_popup_shown", "true");
-    if (typeof dbAddSubscriber === "function") {
-      dbAddSubscriber(email, "footer");
-    }
-    showToast("Welcome to the Dakar Dapper family! 💌");
-    form.reset();
+  const input = form.querySelector("input");
+  const btn = form.querySelector("button");
+  const email = input.value.trim();
+
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    showToast("Please enter a valid email address.");
+    input.focus();
+    return false;
   }
+
+  btn.disabled = true;
+  const ok = await dbAddSubscriber(email, "footer");
+  btn.disabled = false;
+
+  if (!ok) { showToast("Could not subscribe right now. Please try again."); return false; }
+
+  localStorage.setItem("dd_subscribed", "true");
+  sessionStorage.setItem("dd_preshop_popup_shown", "true");
+  showToast("Welcome to the Dakar Dapper family 💌");
+  form.reset();
   return false;
 }
 
@@ -986,21 +1213,27 @@ function closeNewsletterModal() {
   }
 }
 
-function handleModalNewsletter(e) {
+async function handleModalNewsletter(e) {
   if (e && e.preventDefault) e.preventDefault();
   const emailInput = document.getElementById("nl-modal-email");
+  const btn = document.getElementById("nl-modal-btn");
   const email = emailInput ? emailInput.value.trim() : "";
-  if (!email) return false;
+
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    showToast("Please enter a valid email address.");
+    if (emailInput) emailInput.focus();
+    return false;
+  }
+
+  if (btn) { btn.disabled = true; btn.textContent = "SUBSCRIBING…"; }
+  const ok = await dbAddSubscriber(email, currentNlModalType || "popup");
+  if (btn) { btn.disabled = false; btn.textContent = "SUBSCRIBE"; }
+
+  if (!ok) { showToast("Could not subscribe right now. Please try again."); return false; }
 
   localStorage.setItem("dd_subscribed", "true");
   sessionStorage.setItem("dd_preshop_popup_shown", "true");
-
-  if (typeof dbAddSubscriber === "function") {
-    dbAddSubscriber(email, currentNlModalType || "popup");
-  }
-
-  showToast("Welcome to the Dakar Dapper family! 💌");
-
+  showToast("Welcome to the Dakar Dapper family 💌");
   closeNewsletterModal();
   if (emailInput) emailInput.value = "";
   return false;
@@ -1070,10 +1303,7 @@ function hydratePageContent() {
 
   // Hero Title (preserve italic or HTML if provided)
   const heroTitle = document.querySelector(".hero-title");
-  if (heroTitle && c.heroTitle) {
-    if (c.heroTitle.includes("<")) heroTitle.innerHTML = c.heroTitle;
-    else heroTitle.textContent = c.heroTitle;
-  }
+  if (heroTitle && c.heroTitle) heroTitle.innerHTML = safeRichText(c.heroTitle);
 
   // Hero Description
   const heroDesc = document.querySelector(".hero-desc");
@@ -1089,10 +1319,7 @@ function hydratePageContent() {
   if (kicker && c.storyKicker) kicker.textContent = c.storyKicker;
 
   const storyTitle = document.querySelector(".editorial-title");
-  if (storyTitle && c.storyTitle) {
-    if (c.storyTitle.includes("<")) storyTitle.innerHTML = c.storyTitle;
-    else storyTitle.textContent = c.storyTitle;
-  }
+  if (storyTitle && c.storyTitle) storyTitle.innerHTML = safeRichText(c.storyTitle);
 
   const storyDesc = document.querySelector(".editorial-desc");
   if (storyDesc && c.storyDesc) storyDesc.textContent = c.storyDesc;
@@ -1100,5 +1327,31 @@ function hydratePageContent() {
   // Top Notice Bar (if present)
   const notice = document.querySelector(".top-notice-bar");
   if (notice && c.bannerNotice) notice.textContent = c.bannerNotice;
+
+  // Footer year — never let a stale copyright ship
+  const yearEl = document.getElementById("footer-year");
+  if (yearEl) yearEl.textContent = new Date().getFullYear();
+
+  // Social + contact links, all managed from the admin
+  const social = {
+    instagram: c.instagramUrl,
+    twitter: c.twitterUrl,
+    email: c.emailAddress ? "mailto:" + c.emailAddress : ""
+  };
+  document.querySelectorAll("[data-social]").forEach(a => {
+    const href = social[a.dataset.social];
+    if (href) {
+      a.href = href;
+      if (a.dataset.social !== "email") a.target = "_blank";
+      a.style.display = "";
+    } else {
+      a.style.display = "none";
+    }
+  });
+
+  // Free-shipping copy follows the threshold the owner set
+  document.querySelectorAll("[data-free-ship]").forEach(el => {
+    el.textContent = "On orders over " + formatPrice(freeShipMin());
+  });
 }
 

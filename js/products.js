@@ -533,42 +533,65 @@ function saveStoredContent(content) {
 }
 
 // ── CLOUD DATABASE SYNC ─────────────────────────────────────────────
+// The database is the single source of truth. The bundled DEFAULT_PRODUCTS
+// exist only as a first-paint placeholder and an offline fallback; once the
+// cloud answers, whatever it says wins — including deletions.
+let cloudSynced = false;
+
 async function syncFromSupabase() {
+  if (typeof dbReady === "function" && !dbReady()) return;
   try {
-    if (typeof dbFetchCategories === "function") {
-      const cloudCats = await dbFetchCategories();
-      if (cloudCats && cloudCats.length > 0) {
-        CATEGORIES = cloudCats;
-        localStorage.setItem("dd_categories_data", JSON.stringify(cloudCats));
-      }
+    const [cloudCats, cloudProducts, cloudContent, rates] = await Promise.all([
+      typeof dbFetchCategories === "function" ? dbFetchCategories() : null,
+      typeof dbFetchProducts === "function" ? dbFetchProducts() : null,
+      typeof dbFetchContent === "function" ? dbFetchContent() : null,
+      typeof dbFetchShippingRates === "function" ? dbFetchShippingRates() : []
+    ]);
+
+    // null means the request failed — keep the cache. An empty array is a
+    // real answer ("the shop has nothing"), so we honour it.
+    if (cloudCats !== null) {
+      CATEGORIES = cloudCats;
+      localStorage.setItem("dd_categories_data", JSON.stringify(cloudCats));
     }
 
-    if (typeof dbFetchProducts === "function") {
-      const cloudProducts = await dbFetchProducts();
-      if (cloudProducts && cloudProducts.length > 0) {
-        PRODUCTS = cloudProducts;
-        localStorage.setItem("dd_products_data", JSON.stringify(cloudProducts));
-      }
+    if (cloudProducts !== null) {
+      PRODUCTS = cloudProducts.filter(p => p.isActive !== false);
+      localStorage.setItem("dd_products_data", JSON.stringify(PRODUCTS));
+      cloudSynced = true;
     }
 
-    if (typeof dbFetchContent === "function") {
-      const cloudContent = await dbFetchContent();
-      if (cloudContent) {
-        SITE_CONTENT = { ...DEFAULT_CONTENT, ...cloudContent };
-        PHONE = SITE_CONTENT.phone || "2349019603621";
-        PHONE_DISPLAY = SITE_CONTENT.phoneDisplay || "09019603621";
-        localStorage.setItem("dd_site_content", JSON.stringify(SITE_CONTENT));
-      }
+    if (cloudContent) {
+      SITE_CONTENT = { ...DEFAULT_CONTENT, ...cloudContent };
+      PHONE = SITE_CONTENT.phone || "2349019603621";
+      PHONE_DISPLAY = SITE_CONTENT.phoneDisplay || "09019603621";
+      localStorage.setItem("dd_site_content", JSON.stringify(SITE_CONTENT));
     }
 
-    // Refresh active views if UI methods are present
+    if (Array.isArray(rates) && rates.length && typeof shippingRates !== "undefined") {
+      shippingRates = rates;
+    }
+
     if (typeof hydratePageContent === "function") hydratePageContent();
     if (typeof renderCategoryFilters === "function") renderCategoryFilters();
     if (typeof renderProducts === "function") renderProducts();
     if (typeof renderShop === "function") renderShop();
+    if (typeof renderCart === "function") renderCart();
+    document.body.classList.add("catalog-ready");
   } catch (err) {
-    console.warn("Dakar Dapper: Cloud sync completed with local cache fallback", err);
+    console.warn("Dakar Dapper: showing cached catalogue.", err);
+    document.body.classList.add("catalog-ready");
   }
+}
+
+// Keep every open storefront current when the owner edits from the admin.
+function startRealtimeCatalog() {
+  if (typeof dbSubscribeToCatalog !== "function") return;
+  let pending = null;
+  dbSubscribeToCatalog(() => {
+    clearTimeout(pending);
+    pending = setTimeout(syncFromSupabase, 400); // coalesce bursts of edits
+  });
 }
 
 // ── ACTIVE APPLICATION STATE ─────────────────────────────────────────
