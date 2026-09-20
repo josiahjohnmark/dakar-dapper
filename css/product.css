@@ -1,0 +1,309 @@
+/* ==========================================================================
+   PRODUCT.CSS — the product detail page
+   Mobile first: gallery, then details, with a sticky buy bar once the main
+   Add to Bag button scrolls out of view.
+   ========================================================================== */
+
+.pdp { padding: 22px 0 90px; }
+
+.pdp-grid { display: grid; gap: 26px; }
+
+/* ── Gallery ─────────────────────────────────────────────────────────── */
+.pdp-stage {
+  position: relative;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: var(--bg-muted);
+  aspect-ratio: 4 / 5;
+}
+.pdp-stage-img, .pdp-stage picture, .pdp-stage img {
+  width: 100%; height: 100%;
+}
+.pdp-main-img { width: 100%; height: 100%; object-fit: cover; }
+
+.pdp-flag {
+  position: absolute; top: 12px; left: 12px; z-index: 3;
+  padding: 6px 12px; border-radius: 999px;
+  font-size: .64rem; font-weight: 700;
+  letter-spacing: .12em; text-transform: uppercase;
+  background: var(--bg-dark); color: #fff;
+}
+.pdp-flag.sold { background: #DC2626; }
+.pdp-flag.low  { background: #FEF3C7; color: #92400E; border: 1px solid #FCD34D; }
+
+.pdp-wish {
+  position: absolute; top: 10px; right: 10px; z-index: 3;
+  width: 44px; height: 44px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: rgba(255,255,255,.92);
+  color: var(--text);
+  box-shadow: var(--shadow-s);
+  transition: transform .18s var(--ease), color .18s;
+}
+.pdp-wish:active { transform: scale(.9); }
+.pdp-wish.active { background: #DC2626; color: #fff; }
+
+.pdp-nav {
+  position: absolute; top: 50%; transform: translateY(-50%); z-index: 3;
+  width: 44px; height: 44px; border-radius: 50%;
+  background: rgba(255,255,255,.9);
+  font-size: 1.5rem; line-height: 1; color: var(--text);
+  display: grid; place-items: center;
+  box-shadow: var(--shadow-s);
+}
+.pdp-nav.prev { left: 10px; }
+.pdp-nav.next { right: 10px; }
+
+.pdp-thumbs {
+  display: flex; gap: 8px; margin-top: 10px;
+  overflow-x: auto; scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 2px;
+}
+.pdp-thumbs::-webkit-scrollbar { display: none; }
+.pdp-thumb {
+  flex: 0 0 auto;
+  width: 66px; height: 82px;
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  border: 2px solid transparent;
+  background: var(--bg-muted);
+  padding: 0; min-height: 0;
+  transition: border-color .18s, opacity .18s;
+  opacity: .62;
+}
+.pdp-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.pdp-thumb.active { border-color: var(--text); opacity: 1; }
+
+/* ── Details column ──────────────────────────────────────────────────── */
+.pdp-cat {
+  font-size: .68rem; font-weight: 700;
+  letter-spacing: .18em; text-transform: uppercase;
+  color: var(--gold);
+}
+.pdp-title {
+  font-size: clamp(1.6rem, 6vw, 2.3rem);
+  font-weight: 600; line-height: 1.15;
+  margin: 6px 0 4px;
+}
+.pdp-sub { font-size: .92rem; color: var(--text-sub); margin-bottom: 12px; }
+
+.pdp-meta {
+  display: flex; flex-wrap: wrap; align-items: center;
+  gap: 8px 14px; margin-bottom: 14px;
+  font-size: .82rem;
+}
+.pdp-stars { color: var(--gold); letter-spacing: .06em; }
+.pdp-stars .num { color: var(--text-sub); margin-left: 5px; letter-spacing: 0; }
+.pdp-reviews { color: var(--text-faint); }
+.pdp-stock { font-weight: 600; }
+.pdp-stock.in { color: #15803D; }
+.pdp-stock.out { color: #DC2626; }
+
+.pdp-price-row {
+  display: flex; align-items: baseline; flex-wrap: wrap;
+  gap: 10px; margin-bottom: 14px;
+}
+.pdp-price { font-size: 1.7rem; font-weight: 700; letter-spacing: -.02em; }
+.pdp-was { font-size: 1rem; color: var(--text-faint); text-decoration: line-through; }
+.pdp-off {
+  font-size: .72rem; font-weight: 700;
+  padding: 3px 8px; border-radius: 999px;
+  background: #FEE2E2; color: #B91C1C;
+}
+
+.pdp-desc {
+  font-size: .92rem; line-height: 1.7;
+  color: var(--text-sub); margin-bottom: 20px;
+}
+
+/* ── Selectors ───────────────────────────────────────────────────────── */
+.pdp-field { margin-bottom: 18px; }
+.pdp-field-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; margin-bottom: 9px;
+  font-size: .76rem; font-weight: 700;
+  letter-spacing: .1em; text-transform: uppercase;
+  color: var(--text-sub);
+}
+.pdp-field-head strong {
+  font-weight: 500; letter-spacing: 0;
+  text-transform: none; color: var(--text); font-size: .86rem;
+}
+.pdp-size-guide {
+  font-size: .74rem; font-weight: 600;
+  letter-spacing: 0; text-transform: none;
+  color: var(--text); text-decoration: underline;
+  text-underline-offset: 3px; min-height: 36px;
+}
+
+.pdp-colors { display: flex; flex-wrap: wrap; gap: 9px; }
+.pdp-color {
+  width: 44px; height: 44px; border-radius: 50%;
+  display: grid; place-items: center;
+  border: 2px solid transparent; padding: 3px;
+  transition: border-color .18s;
+}
+.pdp-color span {
+  width: 100%; height: 100%; border-radius: 50%;
+  border: 1px solid rgba(0,0,0,.12);
+  display: block;
+}
+.pdp-color.active { border-color: var(--text); }
+
+.pdp-sizes { display: flex; flex-wrap: wrap; gap: 8px; }
+.pdp-size {
+  min-width: 52px; min-height: 46px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--bg-white);
+  font-size: .86rem; font-weight: 600;
+  transition: all .18s;
+}
+.pdp-size:hover { border-color: var(--text-sub); }
+.pdp-size.active {
+  background: var(--bg-dark); color: #fff; border-color: var(--bg-dark);
+}
+
+/* ── Buy ─────────────────────────────────────────────────────────────── */
+.pdp-buy {
+  display: flex; gap: 10px; align-items: stretch;
+  margin: 22px 0 10px;
+}
+.pdp-buy .qty-lg { flex-shrink: 0; }
+.pdp-add { flex: 1; min-height: 52px; font-size: .82rem; }
+.pdp-buy .btn:disabled { opacity: .55; cursor: not-allowed; }
+
+.pdp-share {
+  display: inline-flex; align-items: center; gap: 8px;
+  margin-top: 14px; min-height: 44px;
+  font-size: .82rem; font-weight: 600;
+  color: var(--text-sub);
+}
+.pdp-share:hover { color: var(--text); }
+
+.pdp-assure {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 10px; margin: 22px 0;
+  padding: 16px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.pdp-assure div { display: flex; flex-direction: column; gap: 2px; }
+.pdp-assure strong { font-size: .78rem; font-weight: 700; }
+.pdp-assure span { font-size: .72rem; color: var(--text-faint); line-height: 1.4; }
+
+/* ── Accordions ──────────────────────────────────────────────────────── */
+.pdp-acc { border-bottom: 1px solid var(--border); }
+.pdp-acc summary {
+  padding: 15px 0; cursor: pointer;
+  font-size: .88rem; font-weight: 700;
+  list-style: none; position: relative;
+  padding-right: 26px;
+}
+.pdp-acc summary::-webkit-details-marker { display: none; }
+.pdp-acc summary::after {
+  content: '+';
+  position: absolute; right: 2px; top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.15rem; font-weight: 400; color: var(--text-sub);
+}
+.pdp-acc[open] summary::after { content: '−'; }
+.pdp-acc p, .pdp-acc .pdp-list { padding-bottom: 16px; font-size: .87rem; color: var(--text-sub); line-height: 1.7; }
+.pdp-list { padding-left: 18px; }
+.pdp-list li { margin-bottom: 6px; }
+
+/* ── Related ─────────────────────────────────────────────────────────── */
+.pdp-related { margin-top: 56px; }
+.pdp-related .section-title { margin-bottom: 20px; }
+
+/* ── Sticky buy bar ──────────────────────────────────────────────────── */
+.buy-bar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 90;
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+  background: color-mix(in srgb, var(--bg-white) 94%, transparent);
+  backdrop-filter: saturate(180%) blur(14px);
+  -webkit-backdrop-filter: saturate(180%) blur(14px);
+  border-top: 1px solid var(--border);
+  transform: translateY(105%);
+  transition: transform .3s var(--ease);
+}
+.buy-bar.show { transform: translateY(0); }
+.buy-bar-info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.buy-bar-price { font-size: 1.05rem; font-weight: 700; line-height: 1.2; }
+.buy-bar-meta { font-size: .74rem; color: var(--text-faint); }
+.buy-bar .btn { min-height: 46px; padding: 12px 24px; flex-shrink: 0; }
+
+/* ── Loading skeleton ────────────────────────────────────────────────── */
+.pdp-skeleton { display: grid; gap: 26px; }
+.sk {
+  border-radius: var(--r-md);
+  background: linear-gradient(90deg, var(--bg-muted) 25%, var(--border) 50%, var(--bg-muted) 75%);
+  background-size: 200% 100%;
+  animation: ddShimmer 1.3s infinite linear;
+}
+.sk-gallery { aspect-ratio: 4 / 5; }
+.sk-line { height: 18px; margin-bottom: 12px; border-radius: 6px; }
+
+/* ══ Tablet and up ══════════════════════════════════════════════════════ */
+@media (min-width: 760px) {
+  .pdp { padding: 30px 0 70px; }
+  .pdp-grid, .pdp-skeleton {
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+    gap: 44px;
+    align-items: start;
+  }
+  .pdp-gallery { position: sticky; top: 92px; }
+  .pdp-thumbs { flex-wrap: wrap; overflow: visible; }
+  .pdp-thumb { width: 72px; height: 90px; }
+  /* The main button stays in view, so the sticky bar is unnecessary. */
+  .buy-bar { display: none; }
+}
+
+@media (min-width: 1100px) {
+  .pdp-grid { gap: 60px; }
+  .pdp-title { font-size: 2.4rem; }
+}
+
+/* ══ Small phones ═══════════════════════════════════════════════════════ */
+@media (max-width: 380px) {
+  .pdp-assure { grid-template-columns: 1fr; gap: 8px; }
+  .pdp-buy { flex-wrap: wrap; }
+  .pdp-add { width: 100%; }
+}
+
+/* ══ Landscape phones ═══════════════════════════════════════════════════ */
+@media (max-height: 460px) and (orientation: landscape) {
+  .pdp-stage { aspect-ratio: 16 / 10; }
+  .buy-bar { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .buy-bar { transition: none; }
+  .sk { animation: none; }
+}
+
+/* ── Keep the WhatsApp launcher clear of the sticky buy bar ──────────────
+   Both are fixed to the bottom-right, so the chat bubble was landing on top
+   of the Add to Bag label. Lift it while the bar is showing. */
+.buy-bar { z-index: 95; }
+
+@media (max-width: 759px) {
+  .wa-container {
+    transition: transform .3s var(--ease);
+  }
+  body:has(.buy-bar.show) .wa-container {
+    transform: translateY(-72px);
+  }
+}
+
+/* Fallback for browsers without :has() — give the launcher a permanent lift
+   on the product page, where a buy bar can always appear. */
+@supports not selector(:has(*)) {
+  @media (max-width: 759px) {
+    .pdp ~ .wa-container,
+    body .wa-container { bottom: 90px; }
+  }
+}

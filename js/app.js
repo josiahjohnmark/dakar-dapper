@@ -33,10 +33,20 @@ function safeRichText(v) {
 
 /* Local assets all have a WebP sibling (~60% smaller). Uploaded images from
    Supabase Storage do not, so those fall back to a plain <img>. */
-const IMG_FALLBACK = "assets/dakar-dapper-dd.png";
+const IMG_FALLBACK = "/assets/dakar-dapper-dd.png";
+
+/* Product pages live at /product/<slug>, so a stored path like
+   "assets/tee.jpg" would resolve to "/product/assets/tee.jpg". Root-relative
+   paths are correct from every URL depth. */
+function assetUrl(src) {
+  const s = String(src || "").trim();
+  if (!s || /^(https?:)?\/\//i.test(s) || s.startsWith("/")) return s;
+  return "/" + s.replace(/^\.?\//, "");
+}
 
 function productPicture(src, alt, cls, w, h, eager) {
-  const url = escUrl(src);
+  const resolved = assetUrl(src);
+  const url = escUrl(resolved);
   const loading = eager ? 'fetchpriority="high"' : 'loading="lazy"';
   // A product whose image path is wrong should still show the brand mark,
   // never a broken-image icon.
@@ -44,9 +54,68 @@ function productPicture(src, alt, cls, w, h, eager) {
                 `if(this.parentElement.tagName==='PICTURE'){const s=this.parentElement.querySelector('source');if(s)s.remove();}`;
   const img = `<img class="${cls}" src="${url}" alt="${esc(alt)}" ${loading} decoding="async" ` +
               `width="${w}" height="${h}" onerror="${onerr}">`;
-  if (!/^assets\/.+\.jpe?g$/i.test(String(src || ""))) return img;
-  const webp = escUrl(String(src).replace(/\.jpe?g$/i, ".webp"));
+  if (!/^\/assets\/.+\.jpe?g$/i.test(resolved)) return img;
+  const webp = escUrl(resolved.replace(/\.jpe?g$/i, ".webp"));
   return `<picture><source type="image/webp" srcset="${webp}">${img}</picture>`;
+}
+
+/* ── Shared product card ──────────────────────────────────────────────
+   One renderer for the homepage, the shop grid and "you may also like".
+   The card is a real <a> to the product page, so it is crawlable, opens in
+   a new tab on middle-click, and works before JavaScript has finished. The
+   quick-view button keeps the fast in-place preview for browsing. */
+function productSlug(p) {
+  return p.slug || String(p.name || "").toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+function productHref(p) {
+  return `/product/${encodeURIComponent(productSlug(p))}`;
+}
+
+function productCardHtml(p) {
+  const disc = p.originalPrice ? Math.round((1 - p.price / p.originalPrice) * 100) : 0;
+  const hasDisc = p.showDiscount !== false && p.originalPrice && disc > 0;
+  const soldOut = p.isOutOfStock || (p.stock !== undefined && p.stock <= 0);
+  const lowStock = !soldOut && p.stock > 0 && p.stock <= 3;
+  const inWish = wishlist.includes(p.id);
+
+  // "Stretched link": the <a> wraps only the title, but its ::after covers the
+  // whole card. That keeps the markup valid (no buttons nested inside a link),
+  // gives crawlers a real href, and still makes the entire card clickable.
+  return `
+  <article class="p-card${soldOut ? " is-sold-out" : ""}" data-id="${p.id}">
+    <div class="p-card-media">
+      ${soldOut ? `<div class="p-badge"><span class="badge-sold-out">SOLD OUT</span></div>`
+        : lowStock ? `<div class="p-badge"><span class="tag-low">Only ${p.stock} left</span></div>`
+        : p.badge ? `<div class="p-badge"><span class="${esc(p.badgeType)}">${esc(p.badge)}</span></div>` : ""}
+      ${productPicture(p.thumb || p.image, p.name, "img-main", 600, 750)}
+      <button class="heart-btn${inWish ? " active" : ""}" onclick="toggleWish(${p.id})"
+              aria-label="${inWish ? "Remove from" : "Add to"} wishlist" aria-pressed="${inWish}">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="${inWish ? "#fff" : "none"}" stroke="${inWish ? "#fff" : "currentColor"}" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+      </button>
+      <div class="p-actions">
+        <button class="p-action-btn view" onclick="openProduct(${p.id})">Quick View</button>
+        <button class="p-action-btn add" onclick="${soldOut ? "" : `addToCart(${p.id})`}"${soldOut ? " disabled" : ""}>
+          ${soldOut ? "Sold Out" : "+ Bag"}
+        </button>
+      </div>
+    </div>
+    <div class="p-info">
+      <div class="p-info-top">
+        <span class="p-cat">${esc(p.category)}</span>
+        <span class="p-rating">★ ${esc(p.rating)}</span>
+      </div>
+      <h3 class="p-name"><a class="p-card-link" href="${productHref(p)}">${esc(p.name)}</a></h3>
+      <p class="p-sub">${esc(p.subtitle)}</p>
+      <div class="p-colors">${(p.colors || []).slice(0, 3).map(c =>
+        `<span class="p-swatch" style="background:${escColor(c)}"></span>`).join("")}</div>
+      <div class="p-prices">
+        <span class="p-price">${formatPrice(p.price)}</span>
+        ${hasDisc ? `<span class="p-orig">${formatPrice(p.originalPrice)}</span><span class="p-disc">-${disc}%</span>` : ""}
+      </div>
+    </div>
+  </article>`;
 }
 
 function readJSON(key, fallback) {
@@ -230,44 +299,7 @@ function renderProducts(filter, query) {
     return;
   }
 
-  grid.innerHTML = items.map(p => {
-    const disc = p.originalPrice ? Math.round((1 - p.price / p.originalPrice) * 100) : 0;
-    const hasDisc = (p.showDiscount !== false) && p.originalPrice && disc > 0;
-    const isSoldOut = p.isOutOfStock || (p.stock !== undefined && p.stock <= 0);
-    const inWish = wishlist.includes(p.id);
-    const lowStock = !isSoldOut && p.stock > 0 && p.stock <= 3;
-    return `
-    <div class="p-card${isSoldOut ? ' is-sold-out' : ''}" data-id="${p.id}" onclick="openProduct(${p.id})">
-      <div class="p-card-media">
-        ${isSoldOut
-          ? `<div class="p-badge"><span class="badge-sold-out">SOLD OUT</span></div>`
-          : lowStock
-            ? `<div class="p-badge"><span class="tag-low">Only ${p.stock} left</span></div>`
-            : (p.badge ? `<div class="p-badge"><span class="${esc(p.badgeType)}">${esc(p.badge)}</span></div>` : "")}
-        <button class="heart-btn${inWish ? " active" : ""}" onclick="event.stopPropagation();toggleWish(${p.id})" aria-label="${inWish ? "Remove from" : "Add to"} wishlist" aria-pressed="${inWish}">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="${inWish ? '#fff' : 'none'}" stroke="${inWish ? '#fff' : 'currentColor'}" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-        </button>
-        ${productPicture(p.image, p.name, "img-main", 600, 750)}
-        <div class="p-actions">
-          <button class="p-action-btn view" onclick="event.stopPropagation();openProduct(${p.id})">Quick View</button>
-          <button class="p-action-btn add" onclick="event.stopPropagation();${isSoldOut ? '' : `addToCart(${p.id})`}"${isSoldOut ? ' disabled style="opacity:0.6;cursor:not-allowed"' : ''}>${isSoldOut ? 'Sold Out' : '+ Bag'}</button>
-        </div>
-      </div>
-      <div class="p-info">
-        <div class="p-info-top">
-          <span class="p-cat">${esc(p.category)}</span>
-          <span class="p-rating">★ ${esc(p.rating)}</span>
-        </div>
-        <h3 class="p-name">${esc(p.name)}</h3>
-        <p class="p-sub">${esc(p.subtitle)}</p>
-        <div class="p-colors">${(p.colors || []).slice(0, 3).map(c => `<span class="p-swatch" style="background:${escColor(c)}"></span>`).join("")}</div>
-        <div class="p-prices">
-          <span class="p-price">${formatPrice(p.price)}</span>
-          ${hasDisc ? `<span class="p-orig">${formatPrice(p.originalPrice)}</span><span class="p-disc">-${disc}%</span>` : ""}
-        </div>
-      </div>
-    </div>`;
-  }).join("");
+  grid.innerHTML = items.map(productCardHtml).join("");
 
   // Re-bind card reveal for newly rendered cards
   bindCardReveal();
@@ -477,9 +509,9 @@ function openProduct(id) {
   hasViewedCollections = true;
 
   // Gallery
-  document.getElementById("modal-img").src = p.image;
+  document.getElementById("modal-img").src = assetUrl(p.image);
   document.getElementById("modal-img").alt = p.name;
-  document.getElementById("modal-thumbs").innerHTML = `<div class="modal-thumb active" onclick="setGallery(0)"><img src="${escUrl(p.image)}" alt="" loading="lazy"></div>`;
+  document.getElementById("modal-thumbs").innerHTML = `<div class="modal-thumb active" onclick="setGallery(0)"><img src="${escUrl(assetUrl(p.image))}" alt="" loading="lazy"></div>`;
 
   // Info
   const disc = p.originalPrice ? Math.round((1 - p.price / p.originalPrice) * 100) : 0;

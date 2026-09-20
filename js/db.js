@@ -50,6 +50,7 @@ function mapDbToProduct(row) {
     stock: row.stock === undefined || row.stock === null ? 0 : Number(row.stock),
     isOutOfStock: Boolean(row.is_out_of_stock),
     image: row.image || "",
+    thumb: row.thumb || "",
     images: Array.isArray(row.images) ? row.images : [],
     sizes: Array.isArray(row.sizes) ? row.sizes : ["S", "M", "L", "XL"],
     colors: Array.isArray(row.colors) ? row.colors : ["#1A1A1A", "#E5E5E5"],
@@ -83,6 +84,7 @@ function mapProductToDb(p) {
     stock: Number(p.stock) || 0,
     is_out_of_stock: (Number(p.stock) || 0) <= 0,
     image: p.image,
+    thumb: p.thumb || null,
     images: p.images || [],
     sizes: p.sizes,
     colors: p.colors,
@@ -145,6 +147,23 @@ async function dbFetchContent() {
     if (error) { console.warn("content:", error.message); return null; }
     return data ? mapDbToContent(data) : null;
   } catch (err) { console.warn("content:", err); return null; }
+}
+
+/* One product, by its URL slug. Uses the RPC when available (a single round
+   trip that also respects is_active), else falls back to a filtered select. */
+async function dbFetchProductBySlug(slug) {
+  if (!supabaseClient || !slug) return null;
+  try {
+    const { data, error } = await supabaseClient.rpc("product_by_slug", { p_slug: slug });
+    if (!error && data) return mapDbToProduct(data);
+  } catch { /* fall through to the select below */ }
+
+  try {
+    const { data, error } = await supabaseClient
+      .from("dd_products").select("*").eq("slug", slug).maybeSingle();
+    if (error || !data) return null;
+    return mapDbToProduct(data);
+  } catch { return null; }
 }
 
 async function dbFetchShippingRates() {
@@ -424,27 +443,63 @@ function dbLog(action, entity, entityId, detail) {
    PRODUCT IMAGE UPLOAD (Supabase Storage bucket: "products")
    ══════════════════════════════════════════════════════════════════════ */
 
-async function dbUploadProductImage(file) {
+async function dbUploadProductImage(file, onProgress) {
   if (!supabaseClient) return { ok: false, message: "Offline." };
 
-  const allowed = ["image/jpeg", "image/png", "image/webp", "image/avif"];
+  const allowed = ["image/jpeg", "image/png", "image/webp", "image/avif", "image/heic", "image/heif"];
   if (!allowed.includes(file.type)) {
     return { ok: false, message: "Please choose a JPG, PNG or WebP image." };
   }
-  if (file.size > 6 * 1024 * 1024) {
-    return { ok: false, message: "Image is larger than 6MB. Please pick a smaller one." };
+  // Generous, because we are about to shrink it ourselves.
+  if (file.size > 25 * 1024 * 1024) {
+    return { ok: false, message: "That image is over 25MB. Please pick a smaller one." };
   }
 
-  const ext = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "");
-  const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  // Shrink on the device first. A 6MB phone photo becomes ~150KB before it
+  // ever touches the network, so uploads are fast even on mobile data.
+  let opt;
+  try {
+    if (onProgress) onProgress("Optimising…");
+    opt = await optimizeImage(file);
+  } catch (err) {
+    return { ok: false, message: "Could not read that image. Try a different photo." };
+  }
+
+  const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const path = `${stamp}.${opt.ext}`;
+  const thumbPath = `${stamp}-thumb.${opt.ext}`;
+
+  if (onProgress) onProgress(`Uploading ${formatBytes(opt.after)}…`);
 
   const { error } = await supabaseClient.storage
-    .from("products").upload(path, file, { cacheControl: "31536000", upsert: false });
+    .from("products")
+    .upload(path, opt.blob, { cacheControl: "31536000", upsert: false, contentType: opt.mime });
   if (error) return { ok: false, message: error.message };
 
+  // The thumbnail is a nice-to-have; a failure here must not lose the upload.
+  let thumbUrl = "";
+  if (opt.thumbBlob) {
+    const { error: tErr } = await supabaseClient.storage
+      .from("products")
+      .upload(thumbPath, opt.thumbBlob, { cacheControl: "31536000", upsert: false, contentType: opt.mime });
+    if (!tErr) {
+      thumbUrl = supabaseClient.storage.from("products").getPublicUrl(thumbPath).data.publicUrl;
+    }
+  }
+
   const { data } = supabaseClient.storage.from("products").getPublicUrl(path);
-  dbLog("image.upload", "storage", path);
-  return { ok: true, url: data.publicUrl };
+  dbLog("image.upload", "storage", path, { before: opt.before, after: opt.after });
+
+  return {
+    ok: true,
+    url: data.publicUrl,
+    thumbUrl,
+    before: opt.before,
+    after: opt.after,
+    saved: opt.saved,
+    width: opt.width,
+    height: opt.height
+  };
 }
 
 /* ── Realtime: push catalogue changes to open storefronts ───────────── */

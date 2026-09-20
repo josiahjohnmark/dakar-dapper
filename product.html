@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Product — Dakar Dapper</title>
+  <meta name="description" content="Premium menswear and accessories from Dakar Dapper, delivered across Nigeria.">
+
+  <meta property="og:type" content="product">
+  <meta property="og:site_name" content="Dakar Dapper">
+  <meta property="og:title" content="Dakar Dapper">
+  <meta property="og:description" content="Premium menswear and accessories, delivered across Nigeria.">
+  <meta property="og:image" content="">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="theme-color" content="#F8F6F2">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cqcyxiqsxcuqikvbkcrs.supabase.co" crossorigin>
+  <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="/css/style.css?v=69171a1d">
+  <link rel="stylesheet" href="/css/product.css?v=69171a1d">
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32x32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png">
+</head>
+<body>
+
+<!-- ═══ Header ═══ -->
+<header class="header" id="header">
+  <div class="header-inner">
+    <button class="hamburger" id="hamburger" aria-label="Open menu">
+      <span></span><span></span><span></span>
+    </button>
+    <a href="/index.html" class="logo" id="logo-link">
+      <img src="/assets/dakar-dapper-dd.png" alt="Dakar Dapper" class="logo-img" width="38" height="38">
+      <div class="logo-text">
+        <span class="logo-name serif">DAKAR DAPPER</span>
+        <span class="logo-tag">Proper Men's Fashion Line</span>
+      </div>
+    </a>
+    <nav class="nav-desktop" id="nav-desktop">
+      <a href="/index.html" class="nav-link" data-nav="home">Home</a>
+      <a href="/shop.html" class="nav-link active" data-nav="shop">Shop</a>
+      <a href="/index.html#editorial" class="nav-link" data-nav="editorial">Editorial</a>
+      <a href="/index.html#about" class="nav-link" data-nav="about">About</a>
+    </nav>
+    <div class="header-actions">
+      <button class="btn-icon" id="auth-toggle" aria-label="Account">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      </button>
+      <button class="btn-icon" id="search-toggle" aria-label="Search">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      </button>
+      <button class="btn-icon" id="wishlist-toggle" aria-label="Wishlist">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        <span class="badge-count" id="wish-count">0</span>
+      </button>
+      <button class="btn-icon" id="cart-toggle" aria-label="Cart">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+        <span class="badge-count" id="cart-count">0</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- ═══ Search Overlay ═══ -->
+<div class="search-overlay" id="search-overlay">
+  <div class="search-inner">
+    <div class="search-row">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="text" id="search-input" placeholder="Search for styles, materials, or products…" autocomplete="off">
+      <button id="search-close" aria-label="Close search" style="font-size:1.4rem;color:var(--text-sub)">✕</button>
+    </div>
+    <div class="search-tags">
+      <span class="search-tag" data-q="Blazer">Blazers</span>
+      <span class="search-tag" data-q="Watch">Watches</span>
+      <span class="search-tag" data-q="Leather">Leather Goods</span>
+      <span class="search-tag" data-q="Boot">Boots</span>
+      <span class="search-tag" data-q="New">New Arrivals</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ Mobile Nav Drawer ═══ -->
+<div class="mobile-drawer" id="mobile-drawer">
+  <div class="mobile-drawer-head">
+    <a href="/index.html" class="logo">
+      <img src="/assets/dakar-dapper-dd.png" alt="" class="logo-img" width="38" height="38">
+      <div class="logo-text"><span class="logo-name serif">DAKAR DAPPER</span></div>
+    </a>
+    <button id="mobile-close" aria-label="Close" style="font-size:1.5rem;color:var(--text-sub)">✕</button>
+  </div>
+  <div class="mobile-drawer-links">
+    <a href="/index.html" class="mob-link" data-nav="home">Home</a>
+    <a href="/shop.html" class="mob-link" data-nav="shop">Shop</a>
+    <a href="/index.html#editorial" class="mob-link" data-nav="editorial">Editorial</a>
+    <a href="/index.html#about" class="mob-link" data-nav="about">About</a>
+    <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:6px">
+      <a href="#" class="mob-link" onclick="event.preventDefault();closeAllDrawers();openAuth()" style="display:flex;align-items:center;gap:8px">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        Sign In / Sign Up
+      </a>
+    </div>
+  </div>
+  <div class="mobile-drawer-foot">
+    <p>Proper Men's Fashion Line<br>Luxury wears &amp; accessories delivered.</p>
+  </div>
+</div>
+
+<div id="overlay"></div>
+
+<!-- ═══ Product ═══ -->
+<main class="pdp" id="pdp">
+  <div class="container">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a href="/index.html">Home</a>
+      <span class="sep">/</span>
+      <a href="/shop.html" id="crumb-cat">Shop</a>
+      <span class="sep">/</span>
+      <span class="current" id="crumb-name">Loading…</span>
+    </nav>
+
+    <div id="pdp-mount">
+      <div class="pdp-skeleton">
+        <div class="sk sk-gallery"></div>
+        <div>
+          <div class="sk sk-line" style="width:40%"></div>
+          <div class="sk sk-line" style="width:85%;height:30px"></div>
+          <div class="sk sk-line" style="width:55%"></div>
+          <div class="sk sk-line" style="width:100%;height:80px"></div>
+          <div class="sk sk-line" style="width:70%"></div>
+        </div>
+      </div>
+    </div>
+
+    <section class="pdp-related" id="pdp-related" hidden>
+      <h2 class="section-title"><span>Complete the look</span>You may also like</h2>
+      <div class="product-grid" id="related-grid"></div>
+    </section>
+  </div>
+</main>
+
+<!-- ═══ Sticky buy bar (mobile) ═══ -->
+<div class="buy-bar" id="buy-bar" hidden>
+  <div class="buy-bar-info">
+    <span class="buy-bar-price" id="buy-bar-price"></span>
+    <span class="buy-bar-meta" id="buy-bar-meta"></span>
+  </div>
+  <button class="btn btn-dark" id="buy-bar-btn">Add to Bag</button>
+</div>
+
+<!-- ═══ Footer ═══ -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <div class="footer-brand">
+          <img src="/assets/dakar-dapper-dd.png" alt="" class="logo-img" width="38" height="38">
+          <div class="logo-text"><span class="logo-name serif" style="font-size:1rem;">DAKAR DAPPER</span></div>
+        </div>
+        <p style="margin-bottom:14px;line-height:1.6">Proper Men's Fashion Line — curated luxury menswear and accessories for the modern gentleman.</p>
+      </div>
+      <div>
+        <h4>Shop</h4>
+        <a href="/shop.html?cat=wears">Wears</a><a href="/shop.html?cat=accessories">Accessories</a><a href="/shop.html?cat=footwear">Footwear</a><a href="/shop.html?cat=new">New Arrivals</a>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <a href="/index.html#editorial">About Us</a><a href="/shipping.html">Shipping &amp; Returns</a><a href="/privacy.html">Privacy</a>
+      </div>
+      <div>
+        <h4>Connect</h4>
+        <a href="#" data-social="instagram" rel="noopener">Instagram</a><a href="#" data-social="twitter" rel="noopener">Twitter / X</a><a href="https://wa.me/2349019603621" target="_blank" rel="noopener">WhatsApp</a><a href="#" data-social="email">Email Us</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>&copy; <span id="footer-year">2026</span> Dakar Dapper. All rights reserved.</span>
+      <span>Made with ♥ for style</span>
+    </div>
+  </div>
+</footer>
+
+<!-- ═══ Shared drawers & modals ═══ -->
+<div class="drawer" id="cart-drawer">
+  <div class="drawer-head"><h3>Shopping Bag</h3><button class="drawer-close" id="cart-close">✕</button></div>
+  <div class="ship-meter" id="ship-meter"><span id="ship-msg"></span><div class="ship-bar"><div class="ship-fill" id="ship-fill"></div></div></div>
+  <div class="drawer-body" id="cart-items"></div>
+  <div class="drawer-foot" id="cart-footer" style="display:none"><div class="subtotal-row"><span>Subtotal</span><span id="cart-total">₦0</span></div><button class="btn btn-dark buy-full" id="checkout-btn">Checkout</button></div>
+</div>
+
+<div class="drawer" id="wish-drawer">
+  <div class="drawer-head"><h3>Wishlist</h3><button class="drawer-close" id="wish-close">✕</button></div>
+  <div class="drawer-body" id="wish-items"></div>
+</div>
+
+<div class="modal-wrap" id="product-modal">
+  <div class="modal-card" id="modal-card">
+    <button class="modal-x" id="modal-close">✕</button>
+    <div class="modal-grid">
+      <div class="modal-gallery">
+        <div class="modal-thumbs" id="modal-thumbs"></div>
+        <div class="modal-main" id="modal-main"><img id="modal-img" src="" alt=""><button class="modal-nav prev" id="gallery-prev">‹</button><button class="modal-nav next" id="gallery-next">›</button></div>
+      </div>
+      <div class="modal-info" id="modal-info"></div>
+    </div>
+    <div class="tabs-section" id="tabs-section"></div>
+    <div class="related" id="related-section"></div>
+  </div>
+</div>
+
+<div class="modal-wrap size-modal" id="size-modal">
+  <div class="modal-card">
+    <button class="modal-x" onclick="closeSizeGuide()">✕</button>
+    <h2 style="font-family:var(--font-serif);font-size:1.5rem;margin-bottom:4px">Size Guide</h2>
+    <p style="font-size:.88rem;color:var(--text-sub);margin-bottom:14px">Measurements in centimeters</p>
+    <table class="size-table"><thead><tr><th>Size</th><th>Chest</th><th>Waist</th><th>Hips</th></tr></thead><tbody><tr><td>S</td><td>88-92</td><td>73-77</td><td>90-94</td></tr><tr><td>M</td><td>96-100</td><td>81-85</td><td>98-102</td></tr><tr><td>L</td><td>104-108</td><td>89-93</td><td>106-110</td></tr><tr><td>XL</td><td>112-116</td><td>97-101</td><td>114-118</td></tr><tr><td>XXL</td><td>120-124</td><td>105-109</td><td>122-126</td></tr></tbody></table>
+  </div>
+</div>
+
+<div class="modal-wrap checkout-modal" id="checkout-modal">
+  <div class="modal-card" id="checkout-card">
+    <button class="modal-x" onclick="closeCheckout()">✕</button>
+    <div id="checkout-content"></div>
+  </div>
+</div>
+
+<div class="modal-wrap auth-modal" id="auth-modal">
+  <div class="modal-card">
+    <button class="modal-x" id="auth-close">✕</button>
+    <div class="auth-header">
+      <img src="/assets/dakar-dapper-dd.png" alt="" class="logo-img" width="38" height="38">
+      <h2 id="auth-title">Welcome Back</h2>
+      <p id="auth-subtitle">Sign in to your Dakar Dapper account</p>
+    </div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" data-tab="signin" id="tab-signin">Sign In</button>
+      <button class="auth-tab" data-tab="signup" id="tab-signup">Sign Up</button>
+    </div>
+    <div class="a-error auth-error" hidden></div>
+    <form class="auth-form" id="signin-form">
+      <div class="auth-field"><label>Email</label><input type="email" placeholder="your@email.com" required></div>
+      <div class="auth-field"><label>Password</label><input type="password" placeholder="••••••••" required></div>
+      <div class="auth-row"><label><input type="checkbox"> Remember me</label><a href="#">Forgot password?</a></div>
+      <button class="btn btn-dark buy-full" type="submit" style="margin-top:6px">Sign In</button>
+    </form>
+    <div class="a-error auth-error" hidden></div>
+    <form class="auth-form" id="signup-form" style="display:none">
+      <div class="auth-field"><label>Full Name</label><input type="text" placeholder="John Doe" required></div>
+      <div class="auth-field"><label>Email</label><input type="email" placeholder="your@email.com" required></div>
+      <div class="auth-field"><label>Password</label><input type="password" placeholder="Min 8 characters" required></div>
+      <button class="btn btn-dark buy-full" type="submit" style="margin-top:6px">Create Account</button>
+    </form>
+    <p class="auth-footer">By continuing, you agree to our <a href="#">Terms</a> &amp; <a href="/privacy.html">Privacy Policy</a></p>
+  </div>
+</div>
+
+<div class="modal-wrap nl-modal" id="newsletter-modal">
+  <div class="modal-card nl-modal-card">
+    <button class="modal-x" id="nl-modal-close" onclick="closeNewsletterModal()" aria-label="Close">✕</button>
+    <div class="nl-modal-inner">
+      <div class="nl-modal-icon"><img src="/assets/dakar-dapper-dd.png" alt="" class="logo-img" width="38" height="38"></div>
+      <span class="gold nl-badge" id="nl-modal-badge">STAY IN STYLE</span>
+      <h2 class="serif nl-title" id="nl-modal-title">Be the First to Know</h2>
+      <p class="nl-desc" id="nl-modal-desc">Get exclusive access to new collections, private sales and styling tips.</p>
+      <form class="nl-form" id="nl-modal-form" onsubmit="return handleModalNewsletter(event)">
+        <input type="email" id="nl-modal-email" placeholder="Your email address" required>
+        <button class="btn btn-gold nl-submit" id="nl-modal-btn" type="submit">SUBSCRIBE</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="wa-container" id="wa-container">
+  <button class="wa-btn" id="wa-btn" aria-label="Chat on WhatsApp">
+    <div class="wa-pulse"></div>
+    <svg viewBox="0 0 32 32"><path d="M16.004 0h-.008C7.174 0 0 7.176 0 16.004c0 3.5 1.128 6.744 3.046 9.378L1.05 31.28l6.076-1.944A15.93 15.93 0 0 0 16.004 32C24.826 32 32 24.826 32 16.004S24.826 0 16.004 0zm9.31 22.612c-.39 1.1-2.3 2.1-3.182 2.166-.882.066-1.706.396-5.75-1.196-4.86-1.916-7.906-6.93-8.142-7.25-.236-.318-1.932-2.57-1.932-4.9s1.224-3.476 1.66-3.95c.434-.476.95-.594 1.268-.594.316 0 .634.004.91.018.292.014.684-.112 1.07.816.39.95 1.326 3.236 1.442 3.472.118.236.196.512.04.826-.16.316-.236.512-.472.79-.236.276-.498.618-.71.828-.236.236-.482.49-.208.962.276.472 1.222 2.016 2.624 3.264 1.804 1.606 3.326 2.102 3.798 2.338.472.236.748.196 1.024-.118.276-.316 1.186-1.384 1.504-1.858.316-.476.634-.396 1.07-.236.434.158 2.77 1.306 3.244 1.542.472.236.79.354.906.55.118.196.118 1.128-.274 2.228z"/></svg>
+    <span class="wa-dot"></span>
+  </button>
+  <span class="wa-tip">Chat with us</span>
+  <div class="wa-popup" id="wa-popup">
+    <div class="wa-popup-head">
+      <div class="wa-profile">
+        <div class="wa-avatar"><img src="/assets/dakar-dapper-dd.png" alt=""></div>
+        <div><h4>Dakar Dapper</h4><span>Usually replies in minutes</span></div>
+      </div>
+      <button class="wa-popup-close" id="wa-close">✕</button>
+    </div>
+    <div class="wa-popup-body">
+      <div class="wa-bubble">Hi there! 👋 How can we help with your style today?<span class="wa-bubble-time">Just now</span></div>
+      <div class="wa-chips">
+        <button class="wa-chip" data-msg="I'd like to ask about this product">👔 Ask about this item</button>
+        <button class="wa-chip" data-msg="What are your sizes?">📏 Size Guide</button>
+        <button class="wa-chip" data-msg="Question about my order">📦 Order Enquiry</button>
+      </div>
+    </div>
+    <div class="wa-popup-foot">
+      <input type="text" class="wa-input" id="wa-msg" placeholder="Type a message…">
+      <button class="wa-send" id="wa-send"><svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg></button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-box" id="toast-box"></div>
+
+<script id="pdp-schema" type="application/ld+json"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="/js/db.js?v=69171a1d"></script>
+<script src="/js/products.js?v=69171a1d"></script>
+<script src="/js/app.js?v=69171a1d"></script>
+<script src="/js/product.js?v=69171a1d"></script>
+</body>
+</html>

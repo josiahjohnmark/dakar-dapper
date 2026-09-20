@@ -1071,17 +1071,25 @@ function renderImageSlot() {
 
 async function uploadImage(file) {
   const slot = document.getElementById("image-slot");
-  slot.innerHTML = `<div class="img-preview"><div class="img-uploading">Uploading…</div></div>`;
+  const setStatus = msg => {
+    slot.innerHTML = `<div class="img-preview"><div class="img-uploading">${esc(msg)}</div></div>`;
+  };
+  setStatus("Preparing…");
 
-  const res = await dbUploadProductImage(file);
+  const res = await dbUploadProductImage(file, setStatus);
   if (!res.ok) {
     editorError(res.message + " — if the bucket is missing, create a public bucket named “products” in Supabase Storage.");
     renderImageSlot();
     return;
   }
+
   A.editing.image = res.url;
+  A.editing.thumb = res.thumbUrl || "";
   renderImageSlot();
-  toast("Photo uploaded");
+
+  toast(res.saved > 0
+    ? `Photo uploaded — ${formatBytes(res.before)} shrunk to ${formatBytes(res.after)} (${res.saved}% smaller)`
+    : "Photo uploaded");
 }
 
 function renderChipEditors() {

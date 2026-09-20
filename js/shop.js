@@ -251,47 +251,7 @@ function renderShop() {
     return;
   }
 
-  grid.innerHTML = pageItems.map(p => {
-    const isSoldOut = p.isOutOfStock || (p.stock !== undefined && p.stock <= 0);
-    const disc = p.originalPrice && p.showDiscount !== false && p.originalPrice > p.price
-      ? Math.round((1 - p.price / p.originalPrice) * 100) : 0;
-    const inWish = wishlist.includes(p.id);
-    const badgeHtml = isSoldOut
-      ? `<div class="p-badge"><span class="badge-sold-out">Sold Out</span></div>`
-      : (p.badge ? `<div class="p-badge"><span class="${esc(p.badgeType || 'tag-gold')}">${esc(p.badge)}</span></div>` : "");
-
-    const addBtnHtml = isSoldOut
-      ? `<button class="p-action-btn add sold-out-btn" disabled>Sold Out</button>`
-      : `<button class="p-action-btn add" onclick="event.stopPropagation();addToCart(${p.id})">+ Bag</button>`;
-
-    return `
-    <div class="p-card${isSoldOut ? ' is-sold-out' : ''}" data-id="${p.id}" onclick="openProduct(${p.id})">
-      <div class="p-card-media">
-        ${badgeHtml}
-        <button class="heart-btn${inWish ? " active" : ""}" onclick="event.stopPropagation();toggleWish(${p.id});renderShop()" aria-label="Wishlist">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="${inWish ? '#fff' : 'none'}" stroke="${inWish ? '#fff' : 'currentColor'}" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-        </button>
-        ${productPicture(p.image, p.name, "img-main", 600, 750)}
-        <div class="p-actions">
-          <button class="p-action-btn view" onclick="event.stopPropagation();openProduct(${p.id})">Quick View</button>
-          ${addBtnHtml}
-        </div>
-      </div>
-      <div class="p-info">
-        <div class="p-info-top">
-          <span class="p-cat">${esc(p.category)}</span>
-          <span class="p-rating">★ ${esc(p.rating)}</span>
-        </div>
-        <h3 class="p-name">${esc(p.name)}</h3>
-        <p class="p-sub">${esc(p.subtitle || "")}</p>
-        <div class="p-colors">${(p.colors || []).slice(0, 3).map(c => `<span class="p-swatch" style="background:${c}"></span>`).join("")}</div>
-        <div class="p-prices">
-          <span class="p-price">${formatPrice(p.price)}</span>
-          ${disc ? `<span class="p-orig">${formatPrice(p.originalPrice)}</span><span class="p-disc">-${disc}%</span>` : ""}
-        </div>
-      </div>
-    </div>`;
-  }).join("");
+  grid.innerHTML = pageItems.map(productCardHtml).join("");
 
   // Re-bind card reveal animation
   bindCardReveal();
