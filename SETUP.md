@@ -124,7 +124,7 @@ supabase functions deploy send-emails
 ```bash
 supabase secrets set RESEND_API_KEY=re_your_key_here
 supabase secrets set FROM_EMAIL="Dakar Dapper <onboarding@resend.dev>"
-supabase secrets set STORE_URL="https://dakar-dapper.vercel.app"
+supabase secrets set STORE_URL="https://www.dakardapper.com"
 supabase secrets set WHATSAPP_NUMBER="2349019603621"
 ```
 

@@ -7,7 +7,7 @@
      supabase functions deploy send-emails
      supabase secrets set RESEND_API_KEY=re_xxx
      supabase secrets set FROM_EMAIL="Dakar Dapper <orders@yourdomain.com>"
-     supabase secrets set STORE_URL="https://dakar-dapper.vercel.app"
+     supabase secrets set STORE_URL="https://www.dakardapper.com"
      supabase secrets set WHATSAPP_NUMBER="2349019603621"
 
    Trigger it every minute from the Supabase dashboard
@@ -27,7 +27,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!;
 const FROM_EMAIL = Deno.env.get("FROM_EMAIL") ?? "Dakar Dapper <onboarding@resend.dev>";
-const STORE_URL = Deno.env.get("STORE_URL") ?? "https://dakar-dapper.vercel.app";
+const STORE_URL = Deno.env.get("STORE_URL") ?? "https://www.dakardapper.com";
 const WHATSAPP = Deno.env.get("WHATSAPP_NUMBER") ?? "2349019603621";
 
 const BATCH = 20;
