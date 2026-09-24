@@ -295,7 +295,7 @@ function renderShop(append) {
     case "price-low":  items.sort((a, b) => a.price - b.price); break;
     case "price-high": items.sort((a, b) => b.price - a.price); break;
     case "newest":     items.sort((a, b) => (b.isNew ? 1 : 0) - (a.isNew ? 1 : 0)); break;
-    case "rating":     items.sort((a, b) => b.rating - a.rating); break;
+    case "rating":     items.sort((a, b) => (b.rating || 0) - (a.rating || 0) || (b.reviews || 0) - (a.reviews || 0)); break;
     // 'featured' keeps curated order
   }
 

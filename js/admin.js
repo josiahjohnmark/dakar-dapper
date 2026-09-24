@@ -36,6 +36,17 @@ const A = {
   reviews: [],
   reviewFilter: "pending",
   stockAlerts: [],
+  customersSub: "audience",
+  audFilter: {},
+  audAll: null,
+  aud: null,
+  audReq: 0,
+  audPresetTemplate: null,
+  reachReq: 0,
+  campaigns: [],
+  campaignStats: {},
+  camp: null,
+  campReach: 0,
   orderFilter: "all",
   orderSearch: "",
   productFilter: "all",
@@ -190,7 +201,7 @@ function bindShell() {
   });
 
   document.getElementById("add-cat-btn").addEventListener("click", openCategoryEditor);
-  document.getElementById("export-subs-btn").addEventListener("click", exportSubscribers);
+  bindCustomers();
 }
 
 function debounce(fn, ms) {
@@ -202,7 +213,7 @@ const PANE_TITLES = {
   home: ["Dashboard", "Dakar Dapper"],
   orders: ["Orders", "Fulfilment"],
   products: ["Products", "Inventory"],
-  reviews: ["Reviews", "Moderation"],
+  customers: ["Customers", "Audience & email"],
   more: ["Settings", "Store"]
 };
 
@@ -269,12 +280,14 @@ async function loadAll() {
   renderCategories();
   renderCmsForm();
   renderShippingForm();
-  renderSubscribers();
   renderAudit();
   renderReviewFilters();
   renderReviewsList();
   renderStockAlerts();
   refreshEmailStatus();
+
+  A.audAll = null;           // recount totals on every full refresh
+  loadAudience();
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -460,6 +473,15 @@ function renderAttention() {
       icon: "▲", cls: "st-pending",
       text: `<strong>${low.length} product${low.length === 1 ? "" : "s"}</strong> running low`,
       action: () => { switchPane("products"); setProductFilter("low"); }
+    });
+  }
+
+  const pendingReviews = (A.reviews || []).filter(r => r.status === "pending");
+  if (pendingReviews.length) {
+    items.push({
+      icon: "★", cls: "st-pending",
+      text: `<strong>${pendingReviews.length} review${pendingReviews.length === 1 ? "" : "s"}</strong> waiting for approval`,
+      action: () => { switchPane("customers"); switchSub("reviews"); }
     });
   }
 
@@ -916,7 +938,7 @@ function openProductEditor(id) {
     id: null, name: "", subtitle: "", category: A.categories[0]?.id || "wears",
     price: 0, originalPrice: null, showDiscount: true, stock: 10, image: "",
     sizes: ["S", "M", "L", "XL"], colors: ["#1A1A1A"], colorNames: ["Noir"],
-    rating: 5, reviews: 0, description: "", details: [], care: "",
+    rating: null, reviews: 0, description: "", details: [], care: "",
     isNew: true, badge: "", badgeType: "tag-gold", isActive: true
   } : { ...A.products.find(x => x.id === id) };
 
@@ -1562,39 +1584,7 @@ function renderShippingForm() {
    SUBSCRIBERS + AUDIT
    ══════════════════════════════════════════════════════════════════════ */
 
-function renderSubscribers() {
-  const mount = document.getElementById("subscribers-list");
-  if (!A.subscribers.length) {
-    mount.innerHTML = `<div class="a-empty"><p>No subscribers yet.</p></div>`;
-    return;
-  }
-  mount.innerHTML = `
-    <p style="font-size:.84rem;color:var(--a-text-2);margin-bottom:10px">
-      <strong>${A.subscribers.length}</strong> ${A.subscribers.length === 1 ? "person" : "people"} on your list
-    </p>
-    ${A.subscribers.slice(0, 12).map(s => `
-      <div class="a-list-row">
-        <div class="a-list-row-main">
-          <strong style="font-weight:500;font-size:.85rem">${esc(s.email)}</strong>
-          <span>${esc(s.source)} · ${esc(timeAgo(s.created_at))}</span>
-        </div>
-      </div>`).join("")}
-    ${A.subscribers.length > 12 ? `<p style="font-size:.78rem;color:var(--a-text-3);margin-top:10px">and ${A.subscribers.length - 12} more — export to see all</p>` : ""}`;
-}
 
-function exportSubscribers() {
-  if (!A.subscribers.length) return toast("Nothing to export yet.");
-  const rows = [["email", "source", "subscribed_at"],
-    ...A.subscribers.map(s => [s.email, s.source, s.created_at])];
-  const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
-  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `dakar-dapper-subscribers-${new Date().toISOString().slice(0, 10)}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
-  toast("Export downloaded");
-}
 
 function renderAudit() {
   const mount = document.getElementById("audit-list");
@@ -1685,11 +1675,12 @@ function renderReviewFilters() {
       renderReviewsList();
     }));
 
-  const badge = document.getElementById("reviews-badge");
-  if (badge) {
+  ["reviews-badge", "reviews-seg-badge"].forEach(id => {
+    const badge = document.getElementById(id);
+    if (!badge) return;
     badge.textContent = counts.pending;
     badge.hidden = counts.pending === 0;
-  }
+  });
 
   const line = document.getElementById("reviews-count-line");
   if (line) {
@@ -1890,4 +1881,780 @@ async function refreshEmailStatus() {
       checkout. The <strong>send-emails</strong> function delivers them.
       ${Number(s.queued) > 0 ? " Messages are waiting — check that the function is deployed and scheduled." : ""}
     </p>`;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   CUSTOMERS — sub-sections
+   ══════════════════════════════════════════════════════════════════════ */
+
+function switchSub(name) {
+  document.querySelectorAll(".a-seg-btn").forEach(b => {
+    const on = b.dataset.sub === name;
+    b.classList.toggle("active", on);
+    b.setAttribute("aria-selected", String(on));
+  });
+  document.querySelectorAll(".a-sub").forEach(s =>
+    s.classList.toggle("active", s.id === "sub-" + name));
+  A.customersSub = name;
+  if (name === "campaigns") refreshCampaigns();
+}
+
+function bindCustomers() {
+  document.querySelectorAll(".a-seg-btn").forEach(b =>
+    b.addEventListener("click", () => switchSub(b.dataset.sub)));
+
+  document.getElementById("aud-search").addEventListener("input", debounce(e => {
+    A.audFilter.search = e.target.value.trim();
+    loadAudience();
+  }, 300));
+
+  document.getElementById("aud-reset").addEventListener("click", () => {
+    A.audFilter = {};
+    document.getElementById("aud-search").value = "";
+    renderAudienceControls();
+    loadAudience();
+  });
+
+  document.getElementById("aud-export").addEventListener("click", exportAudience);
+  document.getElementById("aud-email").addEventListener("click", () => {
+    openCampaignEditor(null, { segment: segmentFromFilter(A.audFilter) });
+  });
+  document.getElementById("camp-new").addEventListener("click", () => openCampaignEditor(null));
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   AUDIENCE
+   Everyone who has signed up or bought, one row per email address.
+   Filtering runs in the database so the counts are exact.
+   ══════════════════════════════════════════════════════════════════════ */
+
+const NG_STATES_ADMIN = ["Abia","Adamawa","Akwa Ibom","Anambra","Bauchi","Bayelsa","Benue",
+  "Borno","Cross River","Delta","Ebonyi","Edo","Ekiti","Enugu","FCT - Abuja","Gombe",
+  "Imo","Jigawa","Kaduna","Kano","Katsina","Kebbi","Kogi","Kwara","Lagos","Nasarawa",
+  "Niger","Ogun","Ondo","Osun","Oyo","Plateau","Rivers","Sokoto","Taraba","Yobe","Zamfara"];
+
+const AUD_KINDS = [
+  { id: "all",         label: "Everyone" },
+  { id: "subscribed",  label: "Can email" },
+  { id: "customers",   label: "Customers" },
+  { id: "never",       label: "Never bought" }
+];
+
+function audKind(f) {
+  if (f.never_bought) return "never";
+  if (f.customers_only) return "customers";
+  if (f.subscribed_only) return "subscribed";
+  return "all";
+}
+
+function setAudKind(kind) {
+  delete A.audFilter.subscribed_only;
+  delete A.audFilter.customers_only;
+  delete A.audFilter.never_bought;
+  if (kind === "subscribed") A.audFilter.subscribed_only = true;
+  if (kind === "customers") A.audFilter.customers_only = true;
+  if (kind === "never") A.audFilter.never_bought = true;
+}
+
+/* The filter minus the "who" chip: what a campaign segment keeps. The
+   database adds "subscribed only" itself when it sends. */
+function segmentFromFilter(f) {
+  const seg = { ...f };
+  delete seg.search;
+  delete seg.subscribed_only;
+  return seg;
+}
+
+const SPEND_STEPS = [0, 50000, 100000, 200000, 500000];
+const WITHIN_STEPS = [0, 7, 30, 90, 180];
+const LAPSED_STEPS = [0, 30, 60, 90, 180];
+
+function filterSelectsHtml(f, idPrefix) {
+  const opt = (v, label, cur) => `<option value="${esc(v)}"${String(cur ?? "") === String(v) ? " selected" : ""}>${esc(label)}</option>`;
+  return `
+    <div class="aud-grid">
+      <label class="aud-field"><span>Bought from</span>
+        <select class="a-select" data-f="category" id="${idPrefix}-category">
+          ${opt("", "Any category", f.category)}
+          ${A.categories.map(c => opt(c.id, c.name, f.category)).join("")}
+        </select></label>
+      <label class="aud-field"><span>Bought product</span>
+        <select class="a-select" data-f="product_id" id="${idPrefix}-product">
+          ${opt("", "Any product", f.product_id)}
+          ${A.products.map(p => opt(p.id, p.name, f.product_id)).join("")}
+        </select></label>
+      <label class="aud-field"><span>Spent at least</span>
+        <select class="a-select" data-f="min_spent" id="${idPrefix}-spent">
+          ${SPEND_STEPS.map(v => opt(v || "", v ? money(v) : "Any amount", f.min_spent)).join("")}
+        </select></label>
+      <label class="aud-field"><span>Ordered within</span>
+        <select class="a-select" data-f="bought_within_days" id="${idPrefix}-within">
+          ${WITHIN_STEPS.map(v => opt(v || "", v ? `Last ${v} days` : "Any time", f.bought_within_days)).join("")}
+        </select></label>
+      <label class="aud-field"><span>Not ordered for</span>
+        <select class="a-select" data-f="lapsed_days" id="${idPrefix}-lapsed">
+          ${LAPSED_STEPS.map(v => opt(v || "", v ? `${v}+ days` : "Doesn't matter", f.lapsed_days)).join("")}
+        </select></label>
+      <label class="aud-field"><span>State</span>
+        <select class="a-select" data-f="state" id="${idPrefix}-state">
+          ${opt("", "Anywhere", f.state)}
+          ${NG_STATES_ADMIN.map(s => opt(s, s, f.state)).join("")}
+        </select></label>
+    </div>`;
+}
+
+function readFilterSelects(container, into) {
+  container.querySelectorAll("select[data-f]").forEach(sel => {
+    const k = sel.dataset.f;
+    if (sel.value === "") delete into[k];
+    else into[k] = k === "category" || k === "state" ? sel.value : Number(sel.value);
+  });
+}
+
+/* Ready-made audiences: the common marketing moves, one tap each. */
+function audiencePresets() {
+  const presets = [
+    { id: "welcome", label: "Signed up, never bought",
+      hint: "Send a welcome offer", filter: { subscribed_only: true, never_bought: true }, template: "welcome" },
+    { id: "recent", label: "Bought in the last 30 days",
+      hint: "Suggest what goes with it", filter: { bought_within_days: 30 }, template: "complete_look" },
+    { id: "vip", label: "Top spenders (₦200k+)",
+      hint: "Early access, private sale", filter: { min_spent: 200000 }, template: "private_sale" },
+    { id: "lapsed", label: "Gone quiet (90+ days)",
+      hint: "Win them back", filter: { lapsed_days: 90 }, template: "win_back" }
+  ];
+
+  // One preset per category people have actually bought from.
+  const counts = {};
+  (A.audAll?.rows || []).forEach(r => (r.categories || []).forEach(c => { counts[c] = (counts[c] || 0) + 1; }));
+  Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 6).forEach(([cat, n]) => {
+    presets.push({
+      id: "cat:" + cat, label: `Bought ${categoryLabel(cat)}`,
+      hint: `${n} ${n === 1 ? "person" : "people"}`, filter: { category: cat }, template: "category"
+    });
+  });
+  return presets;
+}
+
+function categoryLabel(id) {
+  const c = A.categories.find(x => x.id === id);
+  return c ? c.name : id;
+}
+
+function renderAudienceControls() {
+  const f = A.audFilter;
+  document.getElementById("aud-kind").innerHTML = AUD_KINDS.map(k => `
+    <button class="a-chip${audKind(f) === k.id ? " active" : ""}" data-kind="${k.id}">${esc(k.label)}</button>`).join("");
+  document.querySelectorAll("[data-kind]").forEach(b => b.addEventListener("click", () => {
+    setAudKind(b.dataset.kind);
+    renderAudienceControls();
+    loadAudience();
+  }));
+
+  const box = document.getElementById("aud-filters");
+  box.innerHTML = filterSelectsHtml(f, "aud");
+  box.querySelectorAll("select").forEach(sel => sel.addEventListener("change", () => {
+    readFilterSelects(box, A.audFilter);
+    loadAudience();
+  }));
+
+  document.getElementById("aud-presets").innerHTML = audiencePresets().map(p => `
+    <button class="aud-preset" data-preset="${esc(p.id)}">
+      <strong>${esc(p.label)}</strong><span>${esc(p.hint)}</span>
+    </button>`).join("");
+  document.querySelectorAll("[data-preset]").forEach(b => b.addEventListener("click", () => {
+    const p = audiencePresets().find(x => x.id === b.dataset.preset);
+    if (!p) return;
+    A.audFilter = { ...p.filter };
+    A.audPresetTemplate = p.template;
+    document.getElementById("aud-search").value = "";
+    renderAudienceControls();
+    loadAudience();
+    document.getElementById("aud-count").scrollIntoView({ behavior: "smooth", block: "start" });
+  }));
+}
+
+async function loadAudienceTotals() {
+  A.audAll = await dbAudience({});
+  const s = document.getElementById("aud-stats");
+  if (!A.audAll) {
+    s.innerHTML = "";
+    document.getElementById("aud-count").textContent =
+      "Audience is not set up yet. Run supabase/004_categories_marketing.sql.";
+    return false;
+  }
+  const rows = A.audAll.rows || [];
+  const neverBoughtSubs = rows.filter(r => r.subscribed && !r.orders).length;
+  s.innerHTML = `
+    <div class="a-stat"><div class="a-stat-label">Contacts</div>
+      <div class="a-stat-value">${esc(A.audAll.total)}</div>
+      <div class="a-stat-sub">signups and buyers</div></div>
+    <div class="a-stat"><div class="a-stat-label">Can email</div>
+      <div class="a-stat-value">${esc(A.audAll.subscribed)}</div>
+      <div class="a-stat-sub">agreed to marketing</div></div>
+    <div class="a-stat"><div class="a-stat-label">Customers</div>
+      <div class="a-stat-value">${esc(A.audAll.customers)}</div>
+      <div class="a-stat-sub">placed an order</div></div>
+    <div class="a-stat"><div class="a-stat-label">Not bought yet</div>
+      <div class="a-stat-value">${esc(neverBoughtSubs)}</div>
+      <div class="a-stat-sub">subscribed, no order</div></div>`;
+  return true;
+}
+
+async function loadAudience() {
+  const ready = A.audAll ? true : await loadAudienceTotals();
+  if (!ready) return;
+  renderAudienceControls();
+
+  const req = ++A.audReq;
+  document.getElementById("aud-count").textContent = "Filtering…";
+  const data = await dbAudience(A.audFilter);
+  if (req !== A.audReq) return;           // a newer filter has started
+  A.aud = data || { total: 0, subscribed: 0, rows: [] };
+  renderAudienceList();
+}
+
+function renderAudienceList() {
+  const { total, subscribed, rows } = A.aud;
+  document.getElementById("aud-count").innerHTML =
+    `<strong>${esc(total)}</strong> ${total === 1 ? "person" : "people"} &middot; ` +
+    `<strong>${esc(subscribed)}</strong> can be emailed`;
+  document.getElementById("aud-email").disabled = !subscribed;
+
+  const mount = document.getElementById("aud-list");
+  if (!rows.length) {
+    mount.innerHTML = `<div class="a-empty"><div class="a-empty-mark">○</div>
+      <h4>Nobody matches</h4><p>Loosen a filter, or clear them all.</p></div>`;
+    return;
+  }
+
+  const shown = rows.slice(0, 100);
+  mount.innerHTML = shown.map(r => `
+    <div class="aud-row">
+      <div class="aud-avatar" aria-hidden="true">${esc((r.name || r.email || "?").trim().charAt(0).toUpperCase())}</div>
+      <div class="aud-main">
+        <strong>${esc(r.name || r.email)}</strong>
+        ${r.name ? `<span class="aud-email">${esc(r.email)}</span>` : ""}
+        <div class="aud-tags">
+          ${r.subscribed
+            ? `<span class="st-chip st-delivered"><span class="ic" aria-hidden="true">✓</span>Can email</span>`
+            : `<span class="st-chip st-unpaid"><span class="ic" aria-hidden="true">○</span>No marketing consent</span>`}
+          ${(r.categories || []).slice(0, 3).map(c => `<span class="aud-cat">${esc(categoryLabel(c))}</span>`).join("")}
+        </div>
+      </div>
+      <div class="aud-side">
+        ${r.orders
+          ? `<strong>${money(r.spent)}</strong><span>${esc(r.orders)} order${r.orders === 1 ? "" : "s"} &middot; ${esc(timeAgo(r.last_order))}</span>`
+          : `<span>Signed up ${r.joined ? esc(timeAgo(r.joined)) : ""}</span>`}
+        ${r.state ? `<span>${esc(r.state)}</span>` : ""}
+      </div>
+    </div>`).join("") +
+    (rows.length > shown.length
+      ? `<p class="aud-more">Showing the first ${shown.length} of ${rows.length}. Export to see everyone.</p>` : "");
+}
+
+function exportAudience() {
+  const rows = A.aud?.rows || [];
+  if (!rows.length) return toast("Nothing to export.");
+  const out = [["email", "name", "can_email", "orders", "spent", "last_order", "categories", "state", "joined"],
+    ...rows.map(r => [r.email, r.name || "", r.subscribed ? "yes" : "no", r.orders, r.spent,
+      r.last_order || "", (r.categories || []).map(categoryLabel).join("; "), r.state || "", r.joined || ""])];
+  const csv = out.map(r => r.map(c => `"${String(c ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
+  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `dakar-dapper-audience-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast(`${rows.length} contacts exported`);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   CAMPAIGNS
+   ══════════════════════════════════════════════════════════════════════ */
+
+/* Starting points. {{first_name}} is replaced per reader. */
+const CAMPAIGN_TEMPLATES = {
+  new_arrivals: {
+    label: "New arrivals",
+    subject: "Just landed at Dakar Dapper",
+    preheader: "A first look for subscribers, before everyone else.",
+    headline: "New in, {{first_name}}",
+    body: "A new edit has just landed, and you are seeing it first.\n\nEvery piece is chosen for fit, fabric and how it wears day after day. Quantities are small, so if something catches your eye, it is worth moving quickly.",
+    cta_text: "Shop new arrivals", cta_url: "/shop.html?cat=new"
+  },
+  category: {
+    label: "More of what they like",
+    subject: "Picked for you, {{first_name}}",
+    preheader: "New pieces in the category you shop most.",
+    headline: "Chosen with you in mind",
+    body: "You have shopped this collection with us before, so we set aside a first look at what just came in.\n\nSame standard of quality you already know, in new colours and cuts.",
+    cta_text: "See the collection", cta_url: ""
+  },
+  complete_look: {
+    label: "Complete the look",
+    subject: "What goes with your last order",
+    preheader: "A few pieces that pair well with what you bought.",
+    headline: "Finish the look, {{first_name}}",
+    body: "Thank you for shopping with us recently.\n\nWe picked a few pieces that pair well with what you chose, so the whole outfit comes together.",
+    cta_text: "Complete the look", cta_url: "/shop.html"
+  },
+  private_sale: {
+    label: "Private sale",
+    subject: "Private access: members only",
+    preheader: "A short private sale for our best customers.",
+    headline: "An invitation, {{first_name}}",
+    body: "As one of our most valued customers, you get access before anyone else.\n\nSelected pieces are reduced for a short time only. Once the sizes go, they go.",
+    cta_text: "Shop the private sale", cta_url: "/shop.html"
+  },
+  win_back: {
+    label: "We have missed you",
+    subject: "It has been a while, {{first_name}}",
+    preheader: "Here is what is new since your last visit.",
+    headline: "Good to see you again",
+    body: "It has been a little while since your last order, and a lot has arrived since.\n\nTake a look at what is new. If there is something you are looking for and cannot find, reply to this email or message us on WhatsApp.",
+    cta_text: "See what's new", cta_url: "/shop.html?cat=new"
+  },
+  welcome: {
+    label: "Welcome",
+    subject: "Welcome to Dakar Dapper",
+    preheader: "Thank you for joining us. Here is where to start.",
+    headline: "Welcome, {{first_name}}",
+    body: "Thank you for joining Dakar Dapper.\n\nWe curate menswear and accessories from Lagos, delivered to every state in Nigeria. Here are a few pieces our customers keep coming back for.",
+    cta_text: "Start shopping", cta_url: "/shop.html"
+  },
+  restock: {
+    label: "Back in stock",
+    subject: "Back in stock: the pieces that sold out",
+    preheader: "The favourites are back, in limited sizes.",
+    headline: "They are back",
+    body: "The pieces that sold out fastest are available again.\n\nWe restocked in limited numbers, so the popular sizes will not last long.",
+    cta_text: "Shop the restock", cta_url: "/shop.html"
+  }
+};
+
+async function refreshCampaigns() {
+  const [list, stats] = await Promise.all([dbFetchCampaigns(), dbCampaignStats()]);
+  A.campaigns = list;
+  A.campaignStats = stats || {};
+  renderCampaigns();
+}
+
+function renderCampaigns() {
+  const mount = document.getElementById("camp-list");
+  if (!A.campaigns.length) {
+    mount.innerHTML = `<div class="a-empty"><div class="a-empty-mark">✉</div>
+      <h4>No campaigns yet</h4>
+      <p>Start one with <strong>New campaign</strong>, or pick an audience first and tap
+      <strong>Email this audience</strong>.</p></div>`;
+    return;
+  }
+
+  mount.innerHTML = A.campaigns.map(c => {
+    const st = A.campaignStats[String(c.id)] || { sent: 0, queued: 0, failed: 0 };
+    const total = Number(c.recipients) || 0;
+    const pct = total ? Math.round((Number(st.sent) / total) * 100) : 0;
+    const sent = c.status === "sent";
+    return `
+    <button class="camp-card" data-camp="${esc(c.id)}">
+      <div class="camp-top">
+        <div class="camp-titles">
+          <strong>${esc(c.name)}</strong>
+          <span>${esc(c.subject)}</span>
+        </div>
+        ${sent
+          ? `<span class="st-chip st-delivered"><span class="ic" aria-hidden="true">✔</span>Sent</span>`
+          : `<span class="st-chip st-pending"><span class="ic" aria-hidden="true">✎</span>Draft</span>`}
+      </div>
+      ${sent ? `
+        <div class="camp-progress" role="img" aria-label="${esc(st.sent)} of ${esc(total)} delivered">
+          <span style="width:${pct}%"></span>
+        </div>
+        <div class="camp-meta">
+          <span><strong>${esc(st.sent)}</strong> of ${esc(total)} delivered</span>
+          ${Number(st.queued) ? `<span>${esc(st.queued)} sending</span>` : ""}
+          ${Number(st.failed) ? `<span class="bad">${esc(st.failed)} failed</span>` : ""}
+          <span>${esc(timeAgo(c.sent_at))}</span>
+        </div>`
+      : `<div class="camp-meta"><span>Edited ${esc(timeAgo(c.updated_at || c.created_at))}</span>
+           <span>${describeSegment(c.segment)}</span></div>`}
+    </button>`;
+  }).join("");
+
+  mount.querySelectorAll("[data-camp]").forEach(b => b.addEventListener("click", () => {
+    const c = A.campaigns.find(x => String(x.id) === b.dataset.camp);
+    if (!c) return;
+    if (c.status === "sent") openCampaignSummary(c);
+    else openCampaignEditor(c);
+  }));
+}
+
+function describeSegment(seg) {
+  const s = seg || {};
+  const parts = [];
+  if (s.never_bought) parts.push("never bought");
+  if (s.customers_only) parts.push("customers");
+  if (s.category) parts.push("bought " + categoryLabel(s.category));
+  if (s.product_id) {
+    const p = A.products.find(x => String(x.id) === String(s.product_id));
+    parts.push("bought " + (p ? p.name : "a product"));
+  }
+  if (s.min_spent) parts.push("spent " + money(s.min_spent) + "+");
+  if (s.bought_within_days) parts.push(`ordered in last ${s.bought_within_days} days`);
+  if (s.lapsed_days) parts.push(`quiet ${s.lapsed_days}+ days`);
+  if (s.state) parts.push("in " + s.state);
+  return esc(parts.length ? "Subscribers who " + parts.join(", ") : "All subscribers");
+}
+
+/* ── Editor ───────────────────────────────────────────────────────────── */
+
+function blankCampaign(extra = {}) {
+  const t = CAMPAIGN_TEMPLATES[A.audPresetTemplate] || CAMPAIGN_TEMPLATES.new_arrivals;
+  const seg = extra.segment || {};
+  return {
+    id: null,
+    name: `${t.label} — ${new Date().toLocaleDateString("en-NG", { day: "numeric", month: "short" })}`,
+    subject: t.subject, preheader: t.preheader, headline: t.headline, body: t.body,
+    cta_text: t.cta_text,
+    cta_url: t.cta_url || (seg.category ? `/shop.html?cat=${seg.category}` : "/shop.html"),
+    product_ids: suggestedProducts(seg),
+    segment: seg
+  };
+}
+
+/* Pre-select sensible products: in-stock pieces from the segment's category,
+   otherwise the newest in-stock pieces. */
+function suggestedProducts(seg) {
+  const live = A.products.filter(p => p.isActive !== false && p.stock > 0);
+  const pool = seg.category ? live.filter(p => p.category === seg.category) : live.filter(p => p.isNew);
+  return (pool.length ? pool : live).slice(0, 4).map(p => p.id);
+}
+
+function openCampaignEditor(existing, extra) {
+  A.camp = existing
+    ? { ...existing, product_ids: [...(existing.product_ids || [])], segment: { ...(existing.segment || {}) } }
+    : blankCampaign(extra || {});
+  A.audPresetTemplate = null;
+
+  const c = A.camp;
+  openSheet(c.id ? "Edit campaign" : "New campaign", `
+    <div class="a-error" id="camp-error" hidden></div>
+
+    <div class="a-field">
+      <label>Start from</label>
+      <div class="chip-edit" id="camp-templates">
+        ${Object.entries(CAMPAIGN_TEMPLATES).map(([id, t]) =>
+          `<button type="button" class="a-chip" data-tpl="${esc(id)}">${esc(t.label)}</button>`).join("")}
+      </div>
+    </div>
+
+    <h4 class="camp-step"><span>1</span> Who receives it</h4>
+    <div id="camp-segment">${filterSelectsHtml(c.segment, "camp")}</div>
+    <p class="camp-reach" id="camp-reach">Counting…</p>
+
+    <h4 class="camp-step"><span>2</span> The email</h4>
+    <div class="a-field">
+      <label for="camp-name">Campaign name <span class="hint-inline">(only you see this)</span></label>
+      <input class="a-input" id="camp-name" value="${esc(c.name)}">
+    </div>
+    <div class="a-field">
+      <label for="camp-subject">Subject line</label>
+      <input class="a-input" id="camp-subject" value="${esc(c.subject)}" maxlength="120">
+      <div class="hint" id="camp-subject-hint"></div>
+    </div>
+    <div class="a-field">
+      <label for="camp-preheader">Preview text <span class="hint-inline">(shows after the subject in the inbox)</span></label>
+      <input class="a-input" id="camp-preheader" value="${esc(c.preheader || "")}" maxlength="140">
+    </div>
+    <div class="a-field">
+      <label for="camp-headline">Headline</label>
+      <input class="a-input" id="camp-headline" value="${esc(c.headline || "")}">
+    </div>
+    <div class="a-field">
+      <label for="camp-body">Message</label>
+      <textarea class="a-textarea" id="camp-body" rows="6">${esc(c.body || "")}</textarea>
+      <div class="hint">Leave a blank line between paragraphs. Type <code>{{first_name}}</code> to greet each reader by name.</div>
+    </div>
+
+    <h4 class="camp-step"><span>3</span> Featured products <span class="hint-inline" id="camp-pick-count"></span></h4>
+    <div class="camp-picker" id="camp-picker"></div>
+
+    <h4 class="camp-step"><span>4</span> Button</h4>
+    <div class="a-row">
+      <div class="a-field">
+        <label for="camp-cta">Button text</label>
+        <input class="a-input" id="camp-cta" value="${esc(c.cta_text || "Shop now")}">
+      </div>
+      <div class="a-field">
+        <label for="camp-link">Goes to</label>
+        <select class="a-select" id="camp-link">
+          ${ctaOptions(c.cta_url)}
+        </select>
+      </div>
+    </div>
+
+    <h4 class="camp-step"><span>5</span> Preview</h4>
+    <p class="hint" style="margin:-4px 0 10px">A close likeness. <strong>Send test</strong> shows it exactly as customers will see it.</p>
+    <div class="camp-preview" id="camp-preview"></div>
+  `, `
+    ${c.id ? `<button class="a-btn a-btn-danger" id="camp-delete" aria-label="Delete draft">Delete</button>` : ""}
+    <button class="a-btn a-btn-ghost" id="camp-save">Save draft</button>
+    <button class="a-btn a-btn-ghost" id="camp-test">Send test</button>
+    <button class="a-btn a-btn-primary" id="camp-send">Send…</button>
+  `);
+
+  renderPicker();
+  renderCampaignPreview();
+  updateReach();
+  bindCampaignEditor();
+}
+
+function ctaOptions(current) {
+  const opts = [
+    ["/shop.html", "The whole shop"],
+    ["/shop.html?cat=new", "New arrivals"],
+    ...A.categories.map(c => [`/shop.html?cat=${c.id}`, c.name])
+  ];
+  const known = opts.some(o => o[0] === current);
+  return opts.map(([v, l]) => `<option value="${esc(v)}"${v === current ? " selected" : ""}>${esc(l)}</option>`).join("") +
+    (current && !known ? `<option value="${esc(current)}" selected>${esc(current)}</option>` : "");
+}
+
+function renderPicker() {
+  const picked = A.camp.product_ids.map(String);
+  const live = A.products.filter(p => p.isActive !== false);
+  document.getElementById("camp-pick-count").textContent =
+    `(${picked.length} of 6 chosen)`;
+  document.getElementById("camp-picker").innerHTML = live.map(p => {
+    const i = picked.indexOf(String(p.id));
+    return `
+    <button type="button" class="pick${i >= 0 ? " on" : ""}" data-pick="${esc(p.id)}"
+            aria-pressed="${i >= 0}" aria-label="${esc(p.name)}">
+      <img src="${escUrl(p.thumb || p.image)}" alt="" loading="lazy">
+      ${i >= 0 ? `<span class="pick-n">${i + 1}</span>` : ""}
+      ${p.stock <= 0 ? `<span class="pick-out">Sold out</span>` : ""}
+      <span class="pick-name">${esc(p.name)}</span>
+    </button>`;
+  }).join("") || `<p class="hint">Add products first.</p>`;
+
+  document.querySelectorAll("[data-pick]").forEach(b => b.addEventListener("click", () => {
+    const id = Number(b.dataset.pick);
+    const ids = A.camp.product_ids.map(Number);
+    const at = ids.indexOf(id);
+    if (at >= 0) ids.splice(at, 1);
+    else if (ids.length >= 6) return toast("Six products at most — more makes the email heavy to load.");
+    else ids.push(id);
+    A.camp.product_ids = ids;
+    renderPicker();
+    renderCampaignPreview();
+  }));
+}
+
+function readCampaignForm() {
+  const v = id => (document.getElementById(id)?.value || "").trim();
+  readFilterSelects(document.getElementById("camp-segment"), A.camp.segment);
+  Object.assign(A.camp, {
+    name: v("camp-name") || "Untitled campaign",
+    subject: v("camp-subject"),
+    preheader: v("camp-preheader"),
+    headline: v("camp-headline"),
+    body: document.getElementById("camp-body")?.value || "",
+    cta_text: v("camp-cta") || "Shop now",
+    cta_url: v("camp-link") || "/shop.html"
+  });
+  return A.camp;
+}
+
+function bindCampaignEditor() {
+  document.querySelectorAll("[data-tpl]").forEach(b => b.addEventListener("click", () => {
+    const t = CAMPAIGN_TEMPLATES[b.dataset.tpl];
+    const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+    set("camp-subject", t.subject);
+    set("camp-preheader", t.preheader);
+    set("camp-headline", t.headline);
+    set("camp-body", t.body);
+    set("camp-cta", t.cta_text);
+    if (t.cta_url) set("camp-link", t.cta_url);
+    set("camp-name", `${t.label} — ${new Date().toLocaleDateString("en-NG", { day: "numeric", month: "short" })}`);
+    readCampaignForm();
+    renderCampaignPreview();
+    toast(`${t.label} template applied`);
+  }));
+
+  ["camp-subject", "camp-preheader", "camp-headline", "camp-body", "camp-cta", "camp-link", "camp-name"]
+    .forEach(id => document.getElementById(id)?.addEventListener("input", debounce(() => {
+      readCampaignForm();
+      renderCampaignPreview();
+    }, 150)));
+
+  document.querySelectorAll("#camp-segment select").forEach(sel =>
+    sel.addEventListener("change", () => { readCampaignForm(); updateReach(); }));
+
+  document.getElementById("camp-save").addEventListener("click", () => saveCampaign(true));
+  document.getElementById("camp-test").addEventListener("click", sendTest);
+  document.getElementById("camp-send").addEventListener("click", confirmSend);
+  document.getElementById("camp-delete")?.addEventListener("click", deleteCampaign);
+}
+
+async function updateReach() {
+  const el = document.getElementById("camp-reach");
+  if (!el) return;
+  el.textContent = "Counting…";
+  const req = ++A.reachReq;
+  const data = await dbAudience({ ...A.camp.segment, subscribed_only: true });
+  if (req !== A.reachReq || !document.getElementById("camp-reach")) return;
+  A.campReach = data ? Number(data.total) : 0;
+  el.innerHTML = A.campReach
+    ? `Will go to <strong>${esc(A.campReach)}</strong> subscriber${A.campReach === 1 ? "" : "s"} &middot; ${describeSegment(A.camp.segment)}`
+    : `<span class="bad">No subscribers match this yet.</span> Customers who did not agree to marketing are never included.`;
+}
+
+function subjectHint() {
+  const el = document.getElementById("camp-subject-hint");
+  if (!el) return;
+  const n = (A.camp.subject || "").length;
+  el.textContent = n > 60
+    ? `${n} characters — phones cut subjects off around 40–50. Put the important words first.`
+    : `${n} characters`;
+  el.style.color = n > 60 ? "var(--st-serious)" : "";
+}
+
+/* Mirrors the layout of the real email closely enough to judge it. */
+function renderCampaignPreview() {
+  subjectHint();
+  const c = A.camp;
+  const first = "Ade";
+  const fill = s => String(s || "").replace(/\{\{\s*first_name\s*\}\}/gi, first);
+  const products = c.product_ids.map(id => A.products.find(p => p.id === Number(id))).filter(Boolean);
+  const paras = fill(c.body).split(/\n\s*\n/).map(p => p.trim()).filter(Boolean)
+    .map(p => `<p>${esc(p).replace(/\n/g, "<br>")}</p>`).join("");
+
+  document.getElementById("camp-preview").innerHTML = `
+    <div class="pv-inbox">
+      <div class="pv-from">Dakar Dapper</div>
+      <div class="pv-subject">${esc(fill(c.subject) || "(no subject)")}</div>
+      <div class="pv-pre">${esc(c.preheader || "")}</div>
+    </div>
+    <div class="pv-mail">
+      <div class="pv-head"><b>DAKAR DAPPER</b><small>Proper Men's Fashion Line</small></div>
+      <div class="pv-body">
+        <h3>${esc(fill(c.headline || c.subject))}</h3>
+        ${paras}
+      </div>
+      ${products.length ? `<div class="pv-grid">${products.map(p => `
+        <div class="pv-prod">
+          <img src="${escUrl(p.thumb || p.image)}" alt="">
+          <span>${esc(p.name)}</span>
+          <b>${money(p.price)}</b>
+        </div>`).join("")}</div>` : ""}
+      <div class="pv-cta"><span>${esc(c.cta_text || "Shop now")}</span></div>
+      <div class="pv-foot">Unsubscribe &middot; Privacy<br>Dakar Dapper &middot; Mainland, Lagos</div>
+    </div>`;
+}
+
+function campError(msg) {
+  const box = document.getElementById("camp-error");
+  if (!box) return toast(msg);
+  box.hidden = false;
+  box.textContent = msg;
+  box.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+async function saveCampaign(announce) {
+  const c = readCampaignForm();
+  if (!c.subject) { campError("Add a subject line."); return null; }
+  if (!c.body.trim() && !c.product_ids.length) { campError("Write a message or feature at least one product."); return null; }
+
+  const res = await dbSaveCampaign(c);
+  if (!res.ok) { campError("Could not save: " + res.message); return null; }
+  A.camp.id = res.campaign.id;
+  if (announce) toast("Draft saved");
+  refreshCampaigns();
+  return res.campaign;
+}
+
+async function sendTest() {
+  const saved = await saveCampaign(false);
+  if (!saved) return;
+  const to = A.user?.email;
+  if (!to) return campError("Could not find your email address.");
+  const res = await dbSendCampaign(saved.id, to);
+  if (!res.ok) return campError(res.message);
+  toast(`Test sent to ${to}. It arrives within a minute or two.`);
+}
+
+async function confirmSend() {
+  const saved = await saveCampaign(false);
+  if (!saved) return;
+  await updateReach();
+  if (!A.campReach) return campError("Nobody who agreed to marketing email matches this audience.");
+
+  const c = A.camp;
+  openSheet("Send campaign", `
+    <div class="send-confirm">
+      <div class="send-big">${esc(A.campReach)}</div>
+      <p>${A.campReach === 1 ? "subscriber" : "subscribers"} will receive
+         <strong>“${esc(c.subject)}”</strong></p>
+      <p class="hint">${describeSegment(c.segment)}</p>
+    </div>
+    <ul class="send-checks">
+      <li>Only people who agreed to marketing email are included.</li>
+      <li>Each email has its own one-tap unsubscribe link.</li>
+      <li>Order confirmations keep priority; this sends in the background.</li>
+      <li>Once sent, it cannot be recalled.</li>
+    </ul>
+  `, `
+    <button class="a-btn a-btn-ghost" id="send-back">Back to editing</button>
+    <button class="a-btn a-btn-gold" id="send-go">Send now</button>
+  `);
+
+  document.getElementById("send-back").addEventListener("click", () => openCampaignEditor(A.campaigns.find(x => x.id === c.id) || c));
+  document.getElementById("send-go").addEventListener("click", async () => {
+    const btn = document.getElementById("send-go");
+    btn.disabled = true; btn.textContent = "Sending…";
+    const res = await dbSendCampaign(c.id, null);
+    if (!res.ok) {
+      btn.disabled = false; btn.textContent = "Send now";
+      return toast(res.message);
+    }
+    closeSheet();
+    toast(`Campaign on its way to ${res.recipients} subscriber${res.recipients === 1 ? "" : "s"}`);
+    refreshCampaigns();
+    refreshEmailStatus();
+  });
+}
+
+async function deleteCampaign() {
+  const id = A.camp.id;
+  if (!id) return closeSheet();
+  const res = await dbDeleteCampaign(id);
+  if (!res.ok) return campError(res.message);
+  closeSheet();
+  toast("Draft deleted");
+  refreshCampaigns();
+}
+
+function openCampaignSummary(c) {
+  const st = A.campaignStats[String(c.id)] || { sent: 0, queued: 0, failed: 0 };
+  openSheet(c.name, `
+    <div class="a-stats" style="grid-template-columns:repeat(3,1fr)">
+      <div class="a-stat"><div class="a-stat-label">Delivered</div><div class="a-stat-value">${esc(st.sent)}</div></div>
+      <div class="a-stat${Number(st.queued) ? " is-warn" : ""}"><div class="a-stat-label">Sending</div><div class="a-stat-value">${esc(st.queued)}</div></div>
+      <div class="a-stat${Number(st.failed) ? " is-alert" : ""}"><div class="a-stat-label">Failed</div><div class="a-stat-value">${esc(st.failed)}</div></div>
+    </div>
+    <dl>
+      <div class="a-kv"><dt>Subject</dt><dd>${esc(c.subject)}</dd></div>
+      <div class="a-kv"><dt>Audience</dt><dd>${describeSegment(c.segment)}</dd></div>
+      <div class="a-kv"><dt>Recipients</dt><dd>${esc(c.recipients)}</dd></div>
+      <div class="a-kv"><dt>Sent</dt><dd>${esc(new Date(c.sent_at).toLocaleString("en-NG"))}</dd></div>
+    </dl>
+    ${Number(st.queued) ? `<p class="hint" style="margin-top:12px">Emails go out steadily in the background so
+      order confirmations are never held up. Check back in a few minutes.</p>` : ""}
+  `, `
+    <button class="a-btn a-btn-ghost" onclick="closeSheet()">Close</button>
+    <button class="a-btn a-btn-primary" id="camp-dup">Reuse as new draft</button>
+  `);
+  document.getElementById("camp-dup").addEventListener("click", () => {
+    openCampaignEditor({ ...c, id: null, status: "draft", name: c.name + " (copy)" });
+  });
 }

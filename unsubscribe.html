@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Unsubscribe — Dakar Dapper</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Inter:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="/css/page.css?v=7e3038fa">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32x32.png">
+  <style>
+    .unsub { max-width: 460px; margin: 0 auto; text-align: center; padding: 64px 20px 80px; }
+    .unsub h1 { margin-bottom: 10px; }
+    .unsub p { margin: 0 auto 22px; }
+    .unsub .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      min-height: 48px; padding: 13px 28px; border-radius: 8px;
+      background: var(--p-ink); color: var(--p-bg); text-decoration: none;
+      font-size: .8rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+    }
+    .unsub .spin { color: var(--p-faint); }
+  </style>
+</head>
+<body class="page-body">
+
+<header class="page-head">
+  <div class="page-head-inner">
+    <a class="brand" href="/index.html">
+      <img src="/assets/dakar-dapper-dd.png" alt="">
+      <strong>DAKAR DAPPER</strong>
+    </a>
+  </div>
+</header>
+
+<main class="unsub" id="unsub" aria-live="polite">
+  <p class="spin">Updating your preferences…</p>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="/js/db.js?v=7e3038fa"></script>
+<script>
+  (async function () {
+    const mount = document.getElementById("unsub");
+    const token = new URLSearchParams(location.search).get("t") || "";
+    const esc = v => String(v).replace(/[&<>"']/g, c =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+    const res = token ? await dbUnsubscribe(token) : { ok: false };
+
+    mount.innerHTML = res.ok ? `
+      <div class="page-kicker">Done</div>
+      <h1>You have been unsubscribed</h1>
+      <p>${esc(res.email || "Your address")} will not receive marketing emails from us again.
+         Order confirmations for anything you buy will still arrive.</p>
+      <a class="btn" href="/shop.html">Back to the shop</a>`
+    : `
+      <div class="page-kicker">Unsubscribe</div>
+      <h1>That link did not work</h1>
+      <p>It may have been used already, or copied incompletely. Message us on
+         <a href="https://wa.me/2349019603621">WhatsApp</a> and we will take you off the list straight away.</p>
+      <a class="btn" href="/index.html">Back to Dakar Dapper</a>`;
+  })();
+</script>
+</body>
+</html>

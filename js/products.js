@@ -465,17 +465,23 @@ const DEFAULT_CONTENT = {
 };
 
 // ── STORAGE ACCESSORS ───────────────────────────────────────────────
+/* The bundled products and older cached copies carry made-up ratings.
+   Ratings only come from approved reviews in the database. */
+function withoutInventedRating(p) {
+  return (p && p.reviewsVerified) ? p : { ...p, rating: null, reviews: 0 };
+}
+
 function getStoredProducts() {
   try {
     const raw = localStorage.getItem("dd_products_data");
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length) return parsed;
+      if (Array.isArray(parsed) && parsed.length) return parsed.map(withoutInventedRating);
     }
   } catch (e) {
     console.error("Error reading stored products:", e);
   }
-  return DEFAULT_PRODUCTS.map(p => ({
+  return DEFAULT_PRODUCTS.map(withoutInventedRating).map(p => ({
     ...p,
     stock: p.stock !== undefined ? p.stock : 10,
     showDiscount: p.showDiscount !== undefined ? p.showDiscount : true,

@@ -55,14 +55,15 @@ function mapDbToProduct(row) {
     sizes: Array.isArray(row.sizes) ? row.sizes : ["S", "M", "L", "XL"],
     colors: Array.isArray(row.colors) ? row.colors : ["#1A1A1A", "#E5E5E5"],
     colorNames: Array.isArray(row.color_names) ? row.color_names : ["Noir", "Bone"],
-    rating: Number(row.rating) || 5.0,
+    rating: row.rating === null || row.rating === undefined ? null : Number(row.rating),
     reviews: Number(row.reviews) || 0,
     description: row.description || "",
     details: Array.isArray(row.details) ? row.details : [],
     care: row.care || "",
     isNew: Boolean(row.is_new),
     isActive: row.is_active !== false,
-    slug: row.slug || ""
+    slug: row.slug || "",
+    reviewsVerified: true
   };
 }
 
@@ -89,8 +90,6 @@ function mapProductToDb(p) {
     sizes: p.sizes,
     colors: p.colors,
     color_names: p.colorNames,
-    rating: p.rating || 5.0,
-    reviews: p.reviews || 0,
     description: p.description || "",
     details: p.details || [],
     care: p.care || "",
@@ -245,6 +244,7 @@ async function dbPlaceOrder(orderData) {
         city: orderData.city,
         state: orderData.state,
         note: orderData.note || "",
+        marketing: !!orderData.marketing,
         items: (orderData.items || []).map(i => ({
           id: i.id, qty: i.qty, size: i.size, color: i.color
         }))
@@ -652,4 +652,71 @@ function dbSubscribeToOrders(onInsert) {
   return supabaseClient.channel("dd_orders_live")
     .on("postgres_changes", { event: "INSERT", schema: "public", table: "dd_orders" }, onInsert)
     .subscribe();
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   EMAIL MARKETING (admin)
+   Audience filtering and campaign sending run inside the database, so the
+   "only people who agreed to marketing" rule cannot be bypassed from here.
+   ══════════════════════════════════════════════════════════════════════ */
+
+async function dbAudience(filter = {}) {
+  if (!supabaseClient) return null;
+  const { data, error } = await supabaseClient.rpc("audience", { p_filter: filter });
+  if (error) { console.warn("audience:", error.message); return null; }
+  return data;
+}
+
+async function dbFetchCampaigns() {
+  if (!supabaseClient) return [];
+  const { data, error } = await supabaseClient.from("dd_campaigns")
+    .select("*").order("created_at", { ascending: false }).limit(100);
+  return error ? [] : (data || []);
+}
+
+async function dbSaveCampaign(c) {
+  if (!supabaseClient) return { ok: false, message: "Offline." };
+  const row = {
+    name: c.name, subject: c.subject, preheader: c.preheader || null,
+    headline: c.headline || null, body: c.body || null,
+    cta_text: c.cta_text || "Shop now", cta_url: c.cta_url || null,
+    product_ids: c.product_ids || [], segment: c.segment || {}
+  };
+  const q = c.id
+    ? supabaseClient.from("dd_campaigns").update(row).eq("id", c.id).eq("status", "draft").select().single()
+    : supabaseClient.from("dd_campaigns").insert(row).select().single();
+  const { data, error } = await q;
+  if (error) return { ok: false, message: error.message };
+  return { ok: true, campaign: data };
+}
+
+async function dbDeleteCampaign(id) {
+  if (!supabaseClient) return { ok: false, message: "Offline." };
+  const { error } = await supabaseClient.from("dd_campaigns").delete().eq("id", id);
+  if (error) return { ok: false, message: error.message };
+  return { ok: true };
+}
+
+async function dbSendCampaign(id, testEmail) {
+  if (!supabaseClient) return { ok: false, message: "Offline." };
+  const { data, error } = await supabaseClient.rpc("send_campaign", {
+    p_id: id, p_test_email: testEmail || null
+  });
+  if (error) return { ok: false, message: error.message };
+  return { ok: true, ...data };
+}
+
+async function dbCampaignStats() {
+  if (!supabaseClient) return {};
+  const { data, error } = await supabaseClient.rpc("campaign_stats");
+  return error ? {} : (data || {});
+}
+
+/* Public: the link at the bottom of every campaign email. */
+async function dbUnsubscribe(token) {
+  if (!supabaseClient || !token) return { ok: false };
+  try {
+    const { data, error } = await supabaseClient.rpc("unsubscribe", { p_token: token });
+    return error ? { ok: false } : (data || { ok: false });
+  } catch { return { ok: false }; }
 }

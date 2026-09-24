@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="css/admin.css?v=e60e8e70">
+  <link rel="stylesheet" href="css/admin.css?v=7e3038fa">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 </head>
@@ -154,21 +154,79 @@
       <div class="prod-list" id="products-list"></div>
     </section>
 
-    <!-- ══ REVIEWS ══ -->
-    <section class="a-pane" id="pane-reviews">
+    <!-- ══ CUSTOMERS: audience, campaigns, reviews ══ -->
+    <section class="a-pane" id="pane-customers">
       <div class="a-pane-head">
-        <h2>Reviews</h2>
-        <p id="reviews-count-line">Nothing is published until you approve it.</p>
+        <h2>Customers</h2>
+        <p>Everyone who signed up or bought, what they bought, and the emails you send them.</p>
       </div>
-      <div class="a-toolbar" id="review-filters"></div>
-      <div id="reviews-list"></div>
 
-      <div class="a-card" style="margin-top:22px">
-        <div class="a-card-head">
-          <h3>Waiting for a restock</h3>
-          <span class="sub">Customers who asked to be told</span>
+      <div class="a-seg" role="tablist" aria-label="Customer sections">
+        <button class="a-seg-btn active" role="tab" data-sub="audience" aria-selected="true">Audience</button>
+        <button class="a-seg-btn" role="tab" data-sub="campaigns" aria-selected="false">Campaigns</button>
+        <button class="a-seg-btn" role="tab" data-sub="reviews" aria-selected="false">
+          Reviews <span class="seg-badge" id="reviews-seg-badge" hidden>0</span>
+        </button>
+      </div>
+
+      <!-- Audience -->
+      <div class="a-sub active" id="sub-audience">
+        <div class="a-stats" id="aud-stats"></div>
+
+        <div class="a-card">
+          <div class="a-card-head"><h3>Smart audiences</h3><span class="sub">Tap to filter</span></div>
+          <div class="aud-presets" id="aud-presets"></div>
         </div>
-        <div id="stock-alerts-list"></div>
+
+        <div class="a-card">
+          <div class="a-card-head">
+            <h3>Filter</h3>
+            <button class="viz-toggle" id="aud-reset">Clear</button>
+          </div>
+          <div class="a-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input class="a-input" id="aud-search" type="search" placeholder="Search name or email" autocomplete="off">
+          </div>
+          <div class="a-toolbar" id="aud-kind"></div>
+          <div class="aud-filters" id="aud-filters"></div>
+        </div>
+
+        <div class="aud-result">
+          <p id="aud-count">Loading…</p>
+          <div class="aud-result-actions">
+            <button class="a-btn a-btn-ghost a-btn-sm" id="aud-export">Export CSV</button>
+            <button class="a-btn a-btn-gold a-btn-sm" id="aud-email">Email this audience</button>
+          </div>
+        </div>
+        <div id="aud-list"></div>
+      </div>
+
+      <!-- Campaigns -->
+      <div class="a-sub" id="sub-campaigns">
+        <div class="camp-head">
+          <p class="camp-intro">Write once, send to the right people. Only customers who agreed to
+            marketing email ever receive a campaign, and every email carries an unsubscribe link.</p>
+          <button class="a-btn a-btn-gold" id="camp-new">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            New campaign
+          </button>
+        </div>
+        <div id="camp-list"></div>
+      </div>
+
+      <!-- Reviews -->
+      <div class="a-sub" id="sub-reviews">
+        <p class="camp-intro" id="reviews-count-line">Nothing is published until you approve it.</p>
+        <div class="a-toolbar" id="review-filters"></div>
+        <div id="reviews-list"></div>
+
+        <div class="a-card" style="margin-top:22px">
+          <div class="a-card-head">
+            <h3>Waiting for a restock</h3>
+            <span class="sub">Customers who asked to be told</span>
+          </div>
+          <div id="stock-alerts-list"></div>
+        </div>
       </div>
     </section>
 
@@ -176,7 +234,7 @@
     <section class="a-pane" id="pane-more">
       <div class="a-pane-head">
         <h2>Store settings</h2>
-        <p>Categories, homepage words, and your audience.</p>
+        <p>Categories, homepage words, delivery and security.</p>
       </div>
 
       <div class="a-card">
@@ -198,12 +256,6 @@
         <div id="shipping-form"></div>
       </div>
 
-      <div class="a-card">
-        <div class="a-card-head"><h3>Newsletter list</h3>
-          <button class="a-btn a-btn-ghost a-btn-sm" id="export-subs-btn">Export CSV</button>
-        </div>
-        <div id="subscribers-list"></div>
-      </div>
 
       <div class="a-card">
         <div class="a-card-head"><h3>Security log</h3>
@@ -250,9 +302,9 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></svg>
       <span>Products</span>
     </button>
-    <button class="a-tab" data-pane="reviews">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.9 6.3 6.6.7-4.9 4.5 1.4 6.5L12 16.8 6 20l1.4-6.5L2.5 9l6.6-.7z"/></svg>
-      <span>Reviews</span>
+    <button class="a-tab" data-pane="customers">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <span>Customers</span>
       <span class="tab-badge" id="reviews-badge" hidden>0</span>
     </button>
     <button class="a-tab" data-pane="more">
@@ -280,8 +332,8 @@
 <div class="a-toast-box" id="toast-box" role="status" aria-live="polite"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="js/image-optimizer.js?v=e60e8e70"></script>
-<script src="js/db.js?v=e60e8e70"></script>
-<script src="js/admin.js?v=e60e8e70"></script>
+<script src="js/image-optimizer.js?v=7e3038fa"></script>
+<script src="js/db.js?v=7e3038fa"></script>
+<script src="js/admin.js?v=7e3038fa"></script>
 </body>
 </html>

@@ -1819,3 +1819,12 @@ ul{list-style:none}
 
 /* The WhatsApp launcher is an anchor now, not a button. */
 .wa-btn { text-decoration: none; }
+
+/* ── Checkout: marketing opt-in (unticked by default, as the NDPA expects) ── */
+.optin {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--r-sm);
+  background: var(--bg-white); cursor: pointer; font-size: .86rem; line-height: 1.45;
+}
+.optin input { width: 20px; height: 20px; margin-top: 1px; flex-shrink: 0; accent-color: var(--bg-dark); }
+.optin small { display: block; color: var(--text-faint); font-size: .76rem; margin-top: 2px; }

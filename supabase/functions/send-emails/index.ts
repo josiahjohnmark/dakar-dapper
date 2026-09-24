@@ -30,8 +30,12 @@ const FROM_EMAIL = Deno.env.get("FROM_EMAIL") ?? "Dakar Dapper <onboarding@resen
 const STORE_URL = Deno.env.get("STORE_URL") ?? "https://www.dakardapper.com";
 const WHATSAPP = Deno.env.get("WHATSAPP_NUMBER") ?? "2349019603621";
 
-const BATCH = 20;
+// ~40 emails a run, one a minute = ~2,400 an hour. The pause keeps us under
+// Resend's default limit of 2 requests a second instead of tripping it.
+const BATCH = 40;
 const MAX_ATTEMPTS = 4;
+const PAUSE_MS = 550;
+const pause = (ms: number) => new Promise(r => setTimeout(r, ms));
 
 /* ── helpers ─────────────────────────────────────────────────────────── */
 
@@ -358,6 +362,142 @@ function backInStockHtml(p: Record<string, any>) {
 </body></html>`;
 }
 
+/* ── marketing campaign ──────────────────────────────────────────────── */
+
+/* {{first_name}} in the headline or body becomes the reader's first name. */
+const personalise = (s: unknown, first: string) =>
+  String(s ?? "").replace(/\{\{\s*first_name\s*\}\}/gi, first);
+
+/* Blank line = new paragraph; single newline = line break. Always escaped. */
+const paragraphs = (s: string) =>
+  s.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean)
+   .map(p => `<p style="margin:0 0 14px;font-size:15px;line-height:1.7;color:#4A463E">${
+     esc(p).replace(/\n/g, "<br>")}</p>`).join("");
+
+const safeLink = (u: unknown) => {
+  const s = String(u ?? "").trim();
+  if (!s) return `${STORE_URL}/shop.html`;
+  if (/^https?:\/\//i.test(s)) return s;
+  return STORE_URL.replace(/\/$/, "") + "/" + s.replace(/^\//, "");
+};
+
+function unsubscribeUrl(p: Record<string, any>) {
+  return p.unsubscribe_token
+    ? `${STORE_URL}/unsubscribe.html?t=${encodeURIComponent(p.unsubscribe_token)}`
+    : `${STORE_URL}/unsubscribe.html`;
+}
+
+function productGrid(products: any[]) {
+  if (!products?.length) return "";
+  const cells = products.slice(0, 6).map(pr => {
+    const was = Number(pr.original_price) > Number(pr.price)
+      ? `<span style="color:#A8A196;text-decoration:line-through;font-size:12px;margin-left:6px">${esc(naira(pr.original_price))}</span>`
+      : "";
+    const url = `${STORE_URL}/product/${encodeURIComponent(pr.slug ?? "")}`;
+    return `
+      <td width="50%" valign="top" style="padding:8px">
+        <a href="${esc(url)}" style="text-decoration:none;color:#1A1A1A;display:block">
+          ${pr.image ? `<img src="${esc(img(pr.image))}" width="232" alt="${esc(pr.name)}"
+               style="display:block;width:100%;max-width:232px;height:auto;border-radius:8px;background:#F0EDE7">` : ""}
+          <div style="font-size:13px;font-weight:600;line-height:1.35;margin-top:9px">${esc(pr.name)}</div>
+          <div style="font-size:13px;font-weight:700;margin-top:3px">${esc(naira(pr.price))}${was}</div>
+          ${pr.sold_out ? `<div style="font-size:11px;color:#B91C1C;margin-top:2px">Sold out</div>` : ""}
+        </a>
+      </td>`;
+  });
+  const rows: string[] = [];
+  for (let i = 0; i < cells.length; i += 2) {
+    rows.push(`<tr>${cells[i]}${cells[i + 1] ?? `<td width="50%" style="padding:8px"></td>`}</tr>`);
+  }
+  return `
+    <tr><td style="padding:10px 20px 4px">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${rows.join("")}</table>
+    </td></tr>`;
+}
+
+function campaignHtml(p: Record<string, any>) {
+  const first = String(p.first_name ?? "there");
+  const headline = personalise(p.headline || p.subject, first);
+  const body = personalise(p.body, first);
+  const cta = safeLink(p.cta_url);
+
+  return `<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${esc(p.subject)}</title></head>
+<body style="margin:0;padding:0;background:#F4F2EE;
+             font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif">
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0">${esc(p.preheader || "")}</div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F4F2EE;padding:24px 12px">
+    <tr><td align="center">
+      ${p.is_test ? `<div style="max-width:560px;margin:0 auto 10px;padding:9px 14px;border-radius:8px;
+            background:#FEF3C7;color:#92400E;font-size:12px;font-weight:700;text-align:center">
+            TEST SEND &mdash; only you received this. Customers have not been emailed.</div>` : ""}
+
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+             style="max-width:560px;background:#FFFFFF;border-radius:14px;overflow:hidden">
+        <tr><td style="background:#14130E;padding:24px 28px;text-align:center">
+          <a href="${esc(STORE_URL)}" style="text-decoration:none">
+            <div style="font-family:Georgia,'Times New Roman',serif;font-size:21px;
+                        letter-spacing:.14em;color:#FFFFFF;font-weight:600">DAKAR DAPPER</div>
+            <div style="font-size:10px;letter-spacing:.22em;color:#B8965A;
+                        text-transform:uppercase;margin-top:5px">Proper Men's Fashion Line</div>
+          </a>
+        </td></tr>
+
+        <tr><td style="padding:34px 28px 8px">
+          <h1 style="margin:0 0 16px;font-family:Georgia,serif;font-size:26px;line-height:1.25;
+                     color:#1A1A1A;font-weight:600">${esc(headline)}</h1>
+          ${paragraphs(body)}
+        </td></tr>
+
+        ${productGrid(p.products)}
+
+        <tr><td style="padding:18px 28px 34px;text-align:center">
+          <a href="${esc(cta)}"
+             style="display:inline-block;background:#14130E;color:#FFFFFF;text-decoration:none;
+                    padding:15px 36px;border-radius:8px;font-size:13px;font-weight:700;
+                    letter-spacing:.1em;text-transform:uppercase">${esc(p.cta_text || "Shop now")}</a>
+        </td></tr>
+
+        <tr><td style="padding:22px 28px 28px;border-top:1px solid #EAE6DF;text-align:center">
+          <p style="margin:0 0 8px;font-size:12px;color:#8A8377;line-height:1.6">
+            Questions? <a href="https://wa.me/${esc(WHATSAPP)}" style="color:#6B6558">Message us on WhatsApp</a>.
+          </p>
+          <p style="margin:0;font-size:11px;color:#A8A196;line-height:1.7">
+            You are receiving this because you signed up for news from Dakar Dapper.<br>
+            <a href="${esc(unsubscribeUrl(p))}" style="color:#A8A196">Unsubscribe</a> &middot;
+            <a href="${esc(STORE_URL)}/privacy.html" style="color:#A8A196">Privacy</a><br>
+            Dakar Dapper &middot; Mainland, Lagos, Nigeria
+          </p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
+}
+
+function campaignText(p: Record<string, any>) {
+  const first = String(p.first_name ?? "there");
+  const products = (p.products ?? []).map((pr: any) =>
+    `  - ${pr.name}  ${naira(pr.price)}\n    ${STORE_URL}/product/${pr.slug ?? ""}`);
+  return [
+    `DAKAR DAPPER`,
+    p.is_test ? `\n[TEST SEND - customers have not been emailed]` : "",
+    ``,
+    personalise(p.headline || p.subject, first),
+    ``,
+    personalise(p.body, first),
+    ``,
+    ...(products.length ? [`FEATURED`, ...products, ``] : []),
+    `${p.cta_text || "Shop now"}: ${safeLink(p.cta_url)}`,
+    ``,
+    `Unsubscribe: ${unsubscribeUrl(p)}`,
+    `Dakar Dapper - Mainland, Lagos, Nigeria`
+  ].join("\n");
+}
+
 /* ── templates ───────────────────────────────────────────────────────── */
 
 function render(template: string, payload: Record<string, any>) {
@@ -367,6 +507,17 @@ function render(template: string, payload: Record<string, any>) {
         subject: orderConfirmationSubject(payload),
         html: orderConfirmationHtml(payload),
         text: orderConfirmationText(payload)
+      };
+    case "campaign":
+      return {
+        subject: (payload.is_test ? "[TEST] " : "") + String(payload.subject ?? "Dakar Dapper"),
+        html: campaignHtml(payload),
+        text: campaignText(payload),
+        // Gmail and Apple Mail show a one-tap "Unsubscribe" button from these.
+        headers: payload.unsubscribe_token ? {
+          "List-Unsubscribe": `<${unsubscribeUrl(payload)}>`,
+          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"
+        } : undefined
       };
     case "back_in_stock":
       return {
@@ -382,14 +533,16 @@ function render(template: string, payload: Record<string, any>) {
 
 /* ── send ────────────────────────────────────────────────────────────── */
 
-async function sendViaResend(to: string, subject: string, html: string, text: string) {
+async function sendViaResend(to: string, subject: string, html: string, text: string,
+                             headers?: Record<string, string>) {
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${RESEND_API_KEY}`,
       "Content-Type": "application/json"
     },
-    body: JSON.stringify({ from: FROM_EMAIL, to: [to], subject, html, text })
+    body: JSON.stringify({ from: FROM_EMAIL, to: [to], subject, html, text,
+                           ...(headers ? { headers } : {}) })
   });
 
   if (!res.ok) {
@@ -416,6 +569,7 @@ Deno.serve(async (req) => {
     .select("*")
     .eq("status", "queued")
     .lt("attempts", MAX_ATTEMPTS)
+    .order("priority", { ascending: true })
     .order("created_at", { ascending: true })
     .limit(BATCH);
 
@@ -424,7 +578,8 @@ Deno.serve(async (req) => {
 
   let sent = 0, failed = 0;
 
-  for (const job of jobs) {
+  for (const [i, job] of jobs.entries()) {
+    if (i > 0) await pause(PAUSE_MS);
     const rendered = render(job.template, job.payload ?? {});
 
     if (!rendered) {
@@ -438,7 +593,8 @@ Deno.serve(async (req) => {
     }
 
     try {
-      await sendViaResend(job.to_email, rendered.subject, rendered.html, rendered.text);
+      await sendViaResend(job.to_email, rendered.subject, rendered.html, rendered.text,
+                          (rendered as { headers?: Record<string, string> }).headers);
       await db.from("dd_email_queue").update({
         status: "sent",
         sent_at: new Date().toISOString(),

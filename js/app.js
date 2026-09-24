@@ -104,7 +104,7 @@ function productCardHtml(p) {
     <div class="p-info">
       <div class="p-info-top">
         <span class="p-cat">${esc(p.category)}</span>
-        <span class="p-rating">★ ${esc(p.rating)}</span>
+        ${p.reviews > 0 && p.rating ? `<span class="p-rating">★ ${esc(p.rating)}</span>` : ""}
       </div>
       <h3 class="p-name"><a class="p-card-link" href="${productHref(p)}">${esc(p.name)}</a></h3>
       <p class="p-sub">${esc(p.subtitle)}</p>
@@ -518,7 +518,8 @@ function openProduct(id) {
   const hasDisc = (p.showDiscount !== false) && p.originalPrice && disc > 0;
   const inWish = wishlist.includes(p.id);
   const isSoldOut = p.isOutOfStock || (p.stock !== undefined && p.stock <= 0);
-  const starsStr = "★".repeat(Math.floor(p.rating || 5)) + ((p.rating || 5) % 1 >= .5 ? "½" : "");
+  const hasReviews = p.reviews > 0 && p.rating;
+  const starsStr = hasReviews ? "★".repeat(Math.round(p.rating)) : "";
 
   document.getElementById("modal-info").innerHTML = `
     <div class="modal-tags">
@@ -528,8 +529,9 @@ function openProduct(id) {
     <h2 class="modal-title">${esc(p.name)}</h2>
     <p class="modal-subtitle">${esc(p.subtitle)}</p>
     <div class="modal-stars">
-      <span class="stars">${starsStr}</span>
-      <span>${esc(p.rating || 5.0)} (${esc(p.reviews || 0)} reviews)</span>
+      ${hasReviews
+        ? `<span class="stars">${starsStr}</span><span>${esc(p.rating)} (${esc(p.reviews)} review${p.reviews === 1 ? "" : "s"})</span>`
+        : `<a href="${productHref(p)}#pdp-reviews" style="color:inherit">No reviews yet</a>`}
       <span class="${isSoldOut ? 'out-of-stock' : 'in-stock'}" style="${isSoldOut ? 'color:#ef4444;font-weight:600' : ''}">• ${isSoldOut ? 'Sold Out' : 'In Stock'}</span>
     </div>
     <div class="modal-price-row">
@@ -843,6 +845,11 @@ function openCheckout() {
         <input id="co-note" name="note" type="text" placeholder="Landmark, gate colour, best time to call">
       </div>
 
+      <label class="optin">
+        <input type="checkbox" id="co-marketing" name="marketing"${d.marketing ? " checked" : ""}>
+        <span>Email me new arrivals and private offers. <small>Unsubscribe anytime.</small></span>
+      </label>
+
       <div class="checkout-summary">
         <div class="sum-row"><span>Subtotal</span><span id="co-subtotal">${formatPrice(subtotal)}</span></div>
         <div class="sum-row"><span>Delivery</span><span id="co-shipping">&mdash;</span></div>
@@ -915,7 +922,8 @@ async function placeOrder(e) {
     firstName: val("co-first"), lastName: val("co-last"),
     email: val("co-email"), phone: val("co-phone"),
     address: val("co-address"), city: val("co-city"),
-    state: val("co-state"), note: val("co-note")
+    state: val("co-state"), note: val("co-note"),
+    marketing: !!(document.getElementById("co-marketing") || {}).checked
   };
 
   const bad = validateCheckout(v);
@@ -940,6 +948,7 @@ async function placeOrder(e) {
     name: v.firstName + " " + v.lastName,
     email: v.email, phone: v.phone, address: v.address,
     city: v.city, state: v.state, note: v.note,
+    marketing: v.marketing,
     items: cart
   });
 
