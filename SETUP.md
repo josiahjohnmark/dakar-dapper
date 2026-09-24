@@ -171,6 +171,37 @@ Nothing to configure; both are live once 003 has run.
 
 ---
 
+## Step 8 — Go live: customer accounts and sales analytics
+
+SQL Editor → paste and run **`supabase/008_golive_accounts_analytics.sql`**.
+
+It does four things:
+
+1. **Retires the old "Wears" category.** Its products move to the client's
+   categories: anything named *short* goes to Shorts; *trouser*, *jean*, *pant* or
+   *cargo* goes to Trousers; everything else (tees, sets, jackets) goes to Casual
+   Shirts. Check them in **Admin → Products** afterwards and move any that belong
+   elsewhere. A category can no longer be deleted while it still has products.
+2. **Removes test data**: orders and subscribers created while testing
+   (test@dakardapper.com and anything named "verification test").
+3. **Gives every customer a private account page** (`/account.html`): their orders,
+   payments, saved pieces, restock waitlist, reviews, viewing and search history
+   (which they can delete), and settings. Each person sees only their own rows;
+   the database enforces that, not the page.
+4. **Adds sales analytics** to the admin home screen (below).
+
+**Optional: start with zero orders.** At the bottom of the file there is a block
+marked *OPTIONAL — START COMPLETELY FRESH*. If every order so far was you testing,
+select just that block and run it. It deletes all orders and queued mail. It does
+not restore stock, so set real stock counts in Admin → Products.
+
+> **Keep "Confirm email" switched on** (Supabase → Authentication → Sign In /
+> Providers → Email). An order placed as a guest appears in someone's account only
+> after they have confirmed that they own its email address. Without confirmation,
+> anyone could sign up with a stranger's email and read that person's orders.
+
+---
+
 ## Email marketing, in short
 
 **Admin → Customers → Audience** lists everyone who joined the newsletter or
@@ -194,8 +225,12 @@ to a paid plan once your list is bigger than that.
 
 Open `admin.html`, or tap **Manage** in the website footer.
 
-**Home** — revenue, orders waiting, stock alerts, a 14-day sales chart, your best sellers,
-and a feed of everything that has happened.
+**Home** — what needs doing right now (orders waiting, stock alerts), then **Sales**:
+pick Today, 7 days, 30 days, 90 days, 12 months or your own dates. You get revenue,
+orders, average order, items sold, customers and payment collected, each compared
+with the period before. Below that: a revenue or orders chart (tap **Table** for the
+exact numbers), best sellers, sales by category, where orders go, and orders by
+status (tap one to open those orders). Cancelled orders never count as revenue.
 
 **Orders** — every order, filterable by status and searchable by name, phone or reference.
 Tap one to see the full delivery address and the items, message the customer on WhatsApp or
@@ -255,12 +290,10 @@ Two things that catch people out:
 
 ### Still worth building
 
-- **Individual product pages** with their own URLs, so you can send a customer a link to
-  one item and so Google can index each product. This is the single biggest remaining
-  growth item.
-- **Order confirmation emails** — a Supabase Edge Function plus Resend or Postmark.
-- **Real customer reviews.** The star ratings currently shown are placeholders from the
-  original build; either collect real ones or remove them before you advertise.
+- **Card payments (Paystack)**, above. Until then the account page shows each order's
+  payment status as you set it in the admin.
+- **Categories for tees and jackets.** They currently sit under Casual Shirts; add
+  T-Shirts or Jackets in Admin → Products → Categories if the range grows.
 
 ---
 
@@ -279,7 +312,8 @@ Then open <http://localhost:8000>. The admin is at
 
 | Path | What it is |
 |---|---|
-| `index.html`, `shop.html` | The storefront |
+| `index.html`, `shop.html`, `product.html` | The storefront |
+| `account.html`, `js/account.js`, `css/account.css` | The customer's private account page |
 | `admin.html` | The management suite (never loaded by the storefront) |
 | `privacy.html`, `shipping.html` | Policy pages, linked from the footer |
 | `404.html` | Not-found page |

@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="css/admin.css?v=b2416df4">
+  <link rel="stylesheet" href="css/admin.css?v=b0fc5eb1">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 </head>
@@ -80,23 +80,46 @@
 
       <div class="a-stats" id="stat-tiles"></div>
 
+      <!-- ══ Sales analytics ══ -->
+      <div class="an-head">
+        <h3 class="an-title">Sales</h3>
+        <div class="a-toolbar an-ranges" id="an-ranges" role="group" aria-label="Timeframe"></div>
+        <div class="an-custom" id="an-custom" hidden>
+          <label><span>From</span><input class="a-input" type="date" id="an-from"></label>
+          <label><span>To</span><input class="a-input" type="date" id="an-to"></label>
+          <button class="a-btn a-btn-primary a-btn-sm" id="an-apply">Apply</button>
+        </div>
+        <p class="an-range-label" id="an-range-label"></p>
+      </div>
+
+      <div class="a-stats an-kpis" id="an-kpis"></div>
+
       <div class="a-two-col">
         <div>
-          <!-- Single-measure, single-series chart: no legend, the title names it. -->
+          <!-- One measure at a time, one axis: revenue or orders, never both. -->
           <div class="a-card viz-root">
             <div class="a-card-head">
               <div>
-                <h3>Revenue, last 14 days</h3>
+                <h3 id="an-chart-title">Revenue</h3>
                 <span class="sub" id="chart-total"></span>
               </div>
               <button class="viz-toggle" id="chart-view-toggle" aria-expanded="false">Table</button>
+            </div>
+            <div class="an-measure" role="group" aria-label="Measure">
+              <button class="a-chip active" data-measure="revenue" aria-pressed="true">Revenue</button>
+              <button class="a-chip" data-measure="orders" aria-pressed="false">Orders</button>
             </div>
             <div id="chart-mount"></div>
           </div>
 
           <div class="a-card">
-            <div class="a-card-head"><h3>Best sellers</h3><span class="sub">by units sold</span></div>
+            <div class="a-card-head"><h3>Best sellers</h3><span class="sub">by revenue</span></div>
             <div id="top-products"></div>
+          </div>
+
+          <div class="a-card">
+            <div class="a-card-head"><h3>Sales by category</h3></div>
+            <div id="an-cats"></div>
           </div>
         </div>
 
@@ -104,6 +127,16 @@
           <div class="a-card">
             <div class="a-card-head"><h3>Needs your attention</h3></div>
             <div id="attention-list"></div>
+          </div>
+
+          <div class="a-card">
+            <div class="a-card-head"><h3>Where orders go</h3><span class="sub">top states</span></div>
+            <div id="an-states"></div>
+          </div>
+
+          <div class="a-card">
+            <div class="a-card-head"><h3>Orders by status</h3></div>
+            <div id="an-status"></div>
           </div>
 
           <div class="a-card">
@@ -339,9 +372,9 @@
 <div class="a-toast-box" id="toast-box" role="status" aria-live="polite"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="js/image-optimizer.js?v=b2416df4"></script>
-<script src="js/socials.js?v=b2416df4"></script>
-<script src="js/db.js?v=b2416df4"></script>
-<script src="js/admin.js?v=b2416df4"></script>
+<script src="js/image-optimizer.js?v=b0fc5eb1"></script>
+<script src="js/socials.js?v=b0fc5eb1"></script>
+<script src="js/db.js?v=b0fc5eb1"></script>
+<script src="js/admin.js?v=b0fc5eb1"></script>
 </body>
 </html>

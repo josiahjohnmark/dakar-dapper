@@ -54,6 +54,12 @@ const A = {
   productSearch: "",
   editing: null,
   chartTable: false,
+  anRange: "30",
+  anReq: 0,
+  an: null,
+  anError: null,
+  anMeasure: "revenue",
+  anRangeInfo: null,
   seenOrderIds: new Set()
 };
 
@@ -203,6 +209,7 @@ function bindShell() {
 
   document.getElementById("add-cat-btn").addEventListener("click", openCategoryEditor);
   bindCustomers();
+  bindAnalytics();
 }
 
 function debounce(fn, ms) {
@@ -291,6 +298,7 @@ async function loadAll() {
 
   A.audAll = null;           // recount totals on every full refresh
   loadAudience();
+  loadAnalytics();
 }
 
 /* ══════════════════════════════════════════════════════════════════════
@@ -303,100 +311,36 @@ function renderDashboard() {
 
   if (!s) {
     tiles.innerHTML = Array(4).fill('<div class="a-skeleton" style="height:96px"></div>').join("");
-    return;
+  } else {
+    // Right now: things that need doing, whatever timeframe is chosen below.
+    const lowOrOut = Number(s.low_stock) + Number(s.out_of_stock);
+    tiles.innerHTML = `
+      <div class="a-stat${Number(s.orders_pending) > 0 ? " is-warn" : ""}">
+        <div class="a-stat-label">Awaiting action</div>
+        <div class="a-stat-value">${esc(s.orders_pending)}</div>
+        <div class="a-stat-sub">${esc(s.orders_today)} order${Number(s.orders_today) === 1 ? "" : "s"} today</div>
+      </div>
+      <div class="a-stat${Number(s.out_of_stock) > 0 ? " is-alert" : lowOrOut > 0 ? " is-warn" : ""}">
+        <div class="a-stat-label">Stock alerts</div>
+        <div class="a-stat-value">${lowOrOut}</div>
+        <div class="a-stat-sub">${esc(s.out_of_stock)} sold out · ${esc(s.low_stock)} low</div>
+      </div>
+      <div class="a-stat">
+        <div class="a-stat-label">Stock value</div>
+        <div class="a-stat-value">${shortMoney(s.stock_value)}</div>
+        <div class="a-stat-sub">${esc(s.products_total)} products at retail price</div>
+      </div>
+      <div class="a-stat">
+        <div class="a-stat-label">Subscribers</div>
+        <div class="a-stat-value">${esc(s.subscribers)}</div>
+        <div class="a-stat-sub">on the newsletter list</div>
+      </div>`;
   }
 
-  const lowOrOut = Number(s.low_stock) + Number(s.out_of_stock);
-
-  tiles.innerHTML = `
-    <div class="a-stat">
-      <div class="a-stat-label">Revenue this month</div>
-      <div class="a-stat-value">${money(s.revenue_month)}</div>
-      <div class="a-stat-sub">${money(s.revenue_total)} all time</div>
-    </div>
-    <div class="a-stat${Number(s.orders_pending) > 0 ? " is-warn" : ""}">
-      <div class="a-stat-label">Awaiting action</div>
-      <div class="a-stat-value">${s.orders_pending}</div>
-      <div class="a-stat-sub">${s.orders_today} order${Number(s.orders_today) === 1 ? "" : "s"} today</div>
-    </div>
-    <div class="a-stat${Number(s.out_of_stock) > 0 ? " is-alert" : lowOrOut > 0 ? " is-warn" : ""}">
-      <div class="a-stat-label">Stock alerts</div>
-      <div class="a-stat-value">${lowOrOut}</div>
-      <div class="a-stat-sub">${s.out_of_stock} sold out · ${s.low_stock} low</div>
-    </div>
-    <div class="a-stat">
-      <div class="a-stat-label">Stock value</div>
-      <div class="a-stat-value">${shortMoney(s.stock_value)}</div>
-      <div class="a-stat-sub">${s.products_total} products · ${s.subscribers} subscribers</div>
-    </div>`;
-
-  renderChart();
-  renderTopProducts();
   renderAttention();
   renderActivity();
 }
 
-/* ── Revenue chart: one measure, one series, one axis ─────────────────
-   Bars for daily magnitude. Grid stays recessive, the peak gets the only
-   direct label, hover gives exact values, and the same numbers are
-   available as a table for anyone who cannot use the visual.
-   ─────────────────────────────────────────────────────────────────────── */
-function renderChart() {
-  const mount = document.getElementById("chart-mount");
-  const toggle = document.getElementById("chart-view-toggle");
-  const days = (A.stats && A.stats.sales_14d) || [];
-
-  if (!days.length) {
-    mount.innerHTML = `<div class="a-empty"><p>No sales data yet.</p></div>`;
-    return;
-  }
-
-  const total = days.reduce((t, d) => t + Number(d.amount), 0);
-  document.getElementById("chart-total").textContent =
-    `${money(total)} across 14 days`;
-
-  toggle.textContent = A.chartTable ? "Chart" : "Table";
-  toggle.setAttribute("aria-expanded", String(A.chartTable));
-
-  if (A.chartTable) {
-    mount.innerHTML = `
-      <table class="viz-table">
-        <caption class="sr-only">Daily revenue for the last 14 days</caption>
-        <thead><tr><th scope="col">Day</th><th scope="col">Revenue</th></tr></thead>
-        <tbody>${days.map(d => `
-          <tr><td>${new Date(d.day).toLocaleDateString("en-NG", { weekday: "short", day: "numeric", month: "short" })}</td>
-              <td>${money(d.amount)}</td></tr>`).join("")}</tbody>
-      </table>`;
-    return;
-  }
-
-  const max = Math.max(...days.map(d => Number(d.amount)), 1);
-  const peakIdx = days.findIndex(d => Number(d.amount) === max);
-
-  mount.innerHTML = `
-    <div class="viz-chart" id="viz-chart">
-      ${days.map((d, i) => {
-        const amt = Number(d.amount);
-        const h = amt > 0 ? Math.max(3, (amt / max) * 100) : 3;
-        const label = new Date(d.day).toLocaleDateString("en-NG", { weekday: "short", day: "numeric", month: "short" });
-        return `
-        <div class="viz-bar-wrap" tabindex="0" role="img"
-             aria-label="${esc(label)}: ${esc(money(amt))}"
-             data-label="${esc(label)}" data-value="${esc(money(amt))}">
-          ${i === peakIdx && amt > 0 ? `<span class="viz-peak-label">${esc(shortMoney(amt))}</span>` : ""}
-          <div class="viz-bar${amt === 0 ? " is-zero" : ""}" style="height:${h}%"></div>
-        </div>`;
-      }).join("")}
-      <div class="viz-tip" id="viz-tip" role="presentation"></div>
-    </div>
-    <div class="viz-baseline"></div>
-    <div class="viz-xaxis">
-      <span>${new Date(days[0].day).toLocaleDateString("en-NG", { day: "numeric", month: "short" })}</span>
-      <span>Today</span>
-    </div>`;
-
-  bindChartHover();
-}
 
 function bindChartHover() {
   const chart = document.getElementById("viz-chart");
@@ -426,27 +370,6 @@ function bindChartHover() {
   }, { passive: true });
 }
 
-function renderTopProducts() {
-  const mount = document.getElementById("top-products");
-  const top = (A.stats && A.stats.top_products) || [];
-
-  if (!top.length) {
-    mount.innerHTML = `<div class="a-empty"><p>No sales yet. Your best sellers will appear here.</p></div>`;
-    return;
-  }
-  const max = Math.max(...top.map(t => Number(t.units)), 1);
-
-  mount.innerHTML = top.map(t => `
-    <div class="a-list-row">
-      <div class="a-list-row-main">
-        <strong>${esc(t.name)}</strong>
-        <span>${esc(t.units)} sold · ${money(t.revenue)}</span>
-        <div style="height:4px;border-radius:2px;background:var(--viz-grid);margin-top:6px;overflow:hidden">
-          <div style="height:100%;width:${(Number(t.units) / max) * 100}%;background:var(--viz-series);border-radius:2px"></div>
-        </div>
-      </div>
-    </div>`).join("");
-}
 
 function renderAttention() {
   const mount = document.getElementById("attention-list");
@@ -765,7 +688,7 @@ function startLiveOrders() {
       toast(`New order from ${newOnes[0].customer_name} — ${money(newOnes[0].total)}`);
       try { navigator.vibrate && navigator.vibrate(180); } catch {}
     }
-    renderOrderFilters(); renderOrders(); refreshStats();
+    renderOrderFilters(); renderOrders(); refreshStats(); loadAnalytics();
   });
 }
 
@@ -2826,4 +2749,267 @@ async function saveSocials() {
   A.socialsDraft = cleaned.map(s => ({ ...s }));
   renderSocialsEditor();
   toast(`${cleaned.length} social link${cleaned.length === 1 ? "" : "s"} live on the site`);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   DASHBOARD
+   Top row: how things stand right now. Below: sales for the timeframe you
+   pick, compared with the period just before it. All numbers come from
+   real orders; cancelled orders never count as revenue.
+   ══════════════════════════════════════════════════════════════════════ */
+
+const AN_RANGES = [
+  { id: "today", label: "Today" },
+  { id: "7",     label: "7 days" },
+  { id: "30",    label: "30 days" },
+  { id: "90",    label: "90 days" },
+  { id: "365",   label: "12 months" },
+  { id: "custom", label: "Custom" }
+];
+
+function startOfDay(d) { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; }
+
+function rangeFor(id) {
+  const now = new Date();
+  if (id === "today") return { from: startOfDay(now), to: now, bucket: "hour", label: "Today so far", prevLabel: "yesterday" };
+  if (id === "7")  { const f = startOfDay(now); f.setDate(f.getDate() - 6);  return { from: f, to: now, bucket: "day",  label: "Last 7 days",  prevLabel: "the 7 days before" }; }
+  if (id === "30") { const f = startOfDay(now); f.setDate(f.getDate() - 29); return { from: f, to: now, bucket: "day",  label: "Last 30 days", prevLabel: "the 30 days before" }; }
+  if (id === "90") { const f = startOfDay(now); f.setDate(f.getDate() - 89); return { from: f, to: now, bucket: "week", label: "Last 90 days", prevLabel: "the 90 days before" }; }
+  if (id === "365") { const f = new Date(now.getFullYear(), now.getMonth() - 11, 1); return { from: f, to: now, bucket: "month", label: "Last 12 months", prevLabel: "the 12 months before" }; }
+  // custom
+  const fromV = document.getElementById("an-from")?.value;
+  const toV = document.getElementById("an-to")?.value;
+  if (!fromV || !toV) return null;
+  const f = new Date(fromV + "T00:00:00");
+  const t = new Date(toV + "T00:00:00"); t.setDate(t.getDate() + 1);
+  if (t <= f) return null;
+  const days = (t - f) / 864e5;
+  const bucket = days <= 2 ? "hour" : days <= 62 ? "day" : days <= 200 ? "week" : "month";
+  const fmt = d => d.toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" });
+  return { from: f, to: t, bucket, label: `${fmt(f)} – ${fmt(new Date(t - 864e5))}`, prevLabel: "the period before" };
+}
+
+function renderRangeBar() {
+  const bar = document.getElementById("an-ranges");
+  if (!bar) return;
+  bar.innerHTML = AN_RANGES.map(r => `
+    <button class="a-chip${A.anRange === r.id ? " active" : ""}" data-range="${r.id}" aria-pressed="${A.anRange === r.id}">${esc(r.label)}</button>`).join("");
+  bar.querySelectorAll("[data-range]").forEach(b => b.addEventListener("click", () => {
+    A.anRange = b.dataset.range;
+    try { localStorage.setItem("dd_admin_range", A.anRange); } catch {}
+    const custom = document.getElementById("an-custom");
+    custom.hidden = A.anRange !== "custom";
+    renderRangeBar();
+    if (A.anRange === "custom") {
+      const to = new Date(), from = new Date(); from.setDate(from.getDate() - 13);
+      const iso = d => d.toISOString().slice(0, 10);
+      if (!document.getElementById("an-from").value) document.getElementById("an-from").value = iso(from);
+      if (!document.getElementById("an-to").value) document.getElementById("an-to").value = iso(to);
+    } else loadAnalytics();
+  }));
+}
+
+function bindAnalytics() {
+  try { A.anRange = localStorage.getItem("dd_admin_range") || "30"; } catch { A.anRange = "30"; }
+  if (!AN_RANGES.some(r => r.id === A.anRange) || A.anRange === "custom") A.anRange = "30";
+  document.getElementById("an-apply")?.addEventListener("click", () => {
+    if (!rangeFor("custom")) return toast("Pick a start date on or before the end date.");
+    loadAnalytics();
+  });
+  document.querySelectorAll("[data-measure]").forEach(b => b.addEventListener("click", () => {
+    A.anMeasure = b.dataset.measure;
+    document.querySelectorAll("[data-measure]").forEach(x => {
+      x.classList.toggle("active", x === b);
+      x.setAttribute("aria-pressed", String(x === b));
+    });
+    renderChart();
+  }));
+  renderRangeBar();
+}
+
+async function loadAnalytics() {
+  const r = rangeFor(A.anRange);
+  if (!r) return;
+  A.anRangeInfo = r;
+  const req = ++A.anReq;
+  document.getElementById("an-range-label").textContent = r.label;
+  document.getElementById("an-kpis").innerHTML = Array(6).fill('<div class="a-skeleton" style="height:104px"></div>').join("");
+  const data = await dbSalesAnalytics(r.from, r.to, r.bucket);
+  if (req !== A.anReq) return;
+  A.an = data && !data.error ? data : null;
+  A.anError = data && data.error ? data.error : null;
+  renderAnalytics();
+}
+
+/* ── KPI tiles with change vs the previous period ─────────────────── */
+function deltaHtml(cur, prev, kind) {
+  cur = Number(cur) || 0; prev = Number(prev) || 0;
+  const vs = A.anRangeInfo ? A.anRangeInfo.prevLabel : "the period before";
+  if (!prev && !cur) return `<div class="a-stat-sub">No sales in either period</div>`;
+  if (!prev) return `<div class="a-stat-sub an-delta up"><span aria-hidden="true">▲</span> New vs ${esc(vs)}</div>`;
+  const pct = Math.round(((cur - prev) / prev) * 100);
+  if (pct === 0) return `<div class="a-stat-sub an-delta flat"><span aria-hidden="true">●</span> Same as ${esc(vs)}</div>`;
+  const up = pct > 0;
+  return `<div class="a-stat-sub an-delta ${up ? "up" : "down"}">
+      <span aria-hidden="true">${up ? "▲" : "▼"}</span> ${up ? "Up" : "Down"} ${Math.abs(pct)}% vs ${esc(vs)}
+      <span class="sr-only">(${esc(kind === "money" ? money(prev) : prev)} before)</span></div>`;
+}
+
+function renderAnalytics() {
+  const kpis = document.getElementById("an-kpis");
+  if (!A.an) {
+    kpis.innerHTML = `<div class="a-empty" style="grid-column:1/-1"><p>${A.anError && /sales_analytics|function/i.test(A.anError)
+      ? "Sales analytics are not switched on yet. Run <strong>supabase/008_golive_accounts_analytics.sql</strong>."
+      : "Could not load sales figures. Check your connection and tap refresh."}</p></div>`;
+    ["chart-mount", "top-products", "an-cats", "an-states", "an-status"].forEach(id => {
+      const el = document.getElementById(id); if (el) el.innerHTML = "";
+    });
+    return;
+  }
+  const c = A.an.current, p = A.an.previous;
+  const collectedPct = Number(c.revenue) ? Math.round((Number(c.paid) / Number(c.revenue)) * 100) : 0;
+
+  kpis.innerHTML = `
+    <div class="a-stat"><div class="a-stat-label">Revenue</div>
+      <div class="a-stat-value">${money(c.revenue)}</div>${deltaHtml(c.revenue, p.revenue, "money")}</div>
+    <div class="a-stat"><div class="a-stat-label">Orders</div>
+      <div class="a-stat-value">${esc(c.orders)}</div>${deltaHtml(c.orders, p.orders)}</div>
+    <div class="a-stat"><div class="a-stat-label">Average order</div>
+      <div class="a-stat-value">${money(c.aov)}</div>${deltaHtml(c.aov, p.aov, "money")}</div>
+    <div class="a-stat"><div class="a-stat-label">Items sold</div>
+      <div class="a-stat-value">${esc(c.units)}</div>${deltaHtml(c.units, p.units)}</div>
+    <div class="a-stat"><div class="a-stat-label">Customers</div>
+      <div class="a-stat-value">${esc(c.customers)}</div>
+      <div class="a-stat-sub">${esc(c.new_customers)} new${Number(c.cancelled) ? ` · ${esc(c.cancelled)} cancelled order${Number(c.cancelled) === 1 ? "" : "s"}` : ""}</div></div>
+    <div class="a-stat"><div class="a-stat-label">Payment collected</div>
+      <div class="a-stat-value">${money(c.paid)}</div>
+      <div class="an-progress" role="img" aria-label="${collectedPct}% of revenue collected"><span style="width:${Math.min(100, collectedPct)}%"></span></div>
+      <div class="a-stat-sub">${collectedPct}% of revenue · ${money(c.unpaid)} to collect</div></div>`;
+
+  renderChart();
+  renderTopProducts();
+  renderBars("an-cats", A.an.by_category, x => x.name, "No sales in this period.");
+  renderBars("an-states", A.an.by_state, x => x.name, "No orders in this period.", x => `${x.orders} order${Number(x.orders) === 1 ? "" : "s"}`);
+  renderStatusBreakdown();
+}
+
+/* ── Chart: one measure, one series, one axis ────────────────────────── */
+function bucketLabel(iso, bucket, long) {
+  const d = new Date(iso);
+  if (bucket === "hour") return d.toLocaleTimeString("en-NG", { hour: "numeric" });
+  if (bucket === "month") return d.toLocaleDateString("en-NG", long ? { month: "long", year: "numeric" } : { month: "short" });
+  if (bucket === "week") return (long ? "Week of " : "") + d.toLocaleDateString("en-NG", { day: "numeric", month: "short" });
+  return d.toLocaleDateString("en-NG", long ? { weekday: "short", day: "numeric", month: "short" } : { day: "numeric", month: "short" });
+}
+
+function renderChart() {
+  const mount = document.getElementById("chart-mount");
+  const toggle = document.getElementById("chart-view-toggle");
+  if (!mount || !A.an) return;
+  const series = A.an.series || [];
+  const bucket = A.an.range?.bucket || "day";
+  const m = A.anMeasure || "revenue";
+  const val = x => Number(m === "revenue" ? x.revenue : x.orders) || 0;
+  const fmt = v => m === "revenue" ? money(v) : `${v} order${v === 1 ? "" : "s"}`;
+  const total = series.reduce((t, x) => t + val(x), 0);
+
+  document.getElementById("an-chart-title").textContent =
+    `${m === "revenue" ? "Revenue" : "Orders"} by ${bucket === "hour" ? "hour" : bucket}`;
+  document.getElementById("chart-total").textContent = `${fmt(total)} in total`;
+  toggle.textContent = A.chartTable ? "Chart" : "Table";
+  toggle.setAttribute("aria-expanded", String(A.chartTable));
+
+  if (!series.length || !total) {
+    mount.innerHTML = `<div class="a-empty"><p>No ${m === "revenue" ? "sales" : "orders"} in this period yet.</p></div>`;
+    return;
+  }
+
+  if (A.chartTable) {
+    mount.innerHTML = `
+      <table class="viz-table">
+        <caption class="sr-only">${m === "revenue" ? "Revenue" : "Orders"} per ${bucket}</caption>
+        <thead><tr><th scope="col">${bucket === "hour" ? "Hour" : bucket === "month" ? "Month" : bucket === "week" ? "Week" : "Day"}</th>
+          <th scope="col">Revenue</th><th scope="col">Orders</th></tr></thead>
+        <tbody>${series.map(x => `<tr><td>${esc(bucketLabel(x.start, bucket, true))}</td>
+          <td>${money(x.revenue)}</td><td>${esc(x.orders)}</td></tr>`).join("")}</tbody>
+      </table>`;
+    return;
+  }
+
+  const max = Math.max(...series.map(val), 1);
+  const peakIdx = series.findIndex(x => val(x) === max);
+  const n = series.length;
+  const tick = i => i === 0 || i === n - 1 || (n > 6 && i === Math.floor((n - 1) / 2));
+
+  mount.innerHTML = `
+    <div class="viz-chart" id="viz-chart" style="grid-template-columns:repeat(${n},minmax(0,1fr))">
+      ${series.map((x, i) => {
+        const v = val(x);
+        const h = v > 0 ? Math.max(3, (v / max) * 100) : 3;
+        const label = bucketLabel(x.start, bucket, true);
+        return `
+        <div class="viz-bar-wrap" tabindex="0" role="img" aria-label="${esc(label)}: ${esc(fmt(v))}"
+             data-label="${esc(label)}" data-value="${esc(fmt(v))}">
+          ${i === peakIdx && v > 0 ? `<span class="viz-peak-label${i < 2 ? " at-start" : i > n - 3 ? " at-end" : ""}">${esc(m === "revenue" ? shortMoney(v) : String(v))}</span>` : ""}
+          <div class="viz-bar${v === 0 ? " is-zero" : ""}" style="height:${h}%"></div>
+        </div>`;
+      }).join("")}
+      <div class="viz-tip" id="viz-tip" role="presentation"></div>
+    </div>
+    <div class="viz-baseline"></div>
+    <div class="viz-xaxis an-xaxis" style="grid-template-columns:repeat(${n},minmax(0,1fr))">
+      ${series.map((x, i) => `<span>${tick(i) ? esc(bucketLabel(x.start, bucket, false)) : ""}</span>`).join("")}
+    </div>`;
+  bindChartHover();
+}
+
+/* ── Horizontal bars (single hue, value labels in text colour) ────────── */
+function renderBars(id, rows, name, emptyText, extra) {
+  const mount = document.getElementById(id);
+  if (!mount) return;
+  rows = (rows || []).filter(r => Number(r.revenue) > 0);
+  if (!rows.length) { mount.innerHTML = `<div class="a-empty"><p>${esc(emptyText)}</p></div>`; return; }
+  const max = Math.max(...rows.map(r => Number(r.revenue)), 1);
+  const total = rows.reduce((t, r) => t + Number(r.revenue), 0);
+  mount.innerHTML = rows.slice(0, 8).map(r => `
+    <div class="an-bar-row">
+      <div class="an-bar-top">
+        <strong>${esc(name(r))}</strong>
+        <span>${money(r.revenue)} · ${Math.round((Number(r.revenue) / total) * 100)}%${extra ? " · " + esc(extra(r)) : r.units ? ` · ${esc(r.units)} sold` : ""}</span>
+      </div>
+      <div class="an-track"><span style="width:${(Number(r.revenue) / max) * 100}%"></span></div>
+    </div>`).join("");
+}
+
+function renderTopProducts() {
+  const mount = document.getElementById("top-products");
+  if (!mount) return;
+  const rows = (A.an && A.an.top_products) || [];
+  if (!rows.length) { mount.innerHTML = `<div class="a-empty"><p>No sales in this period.</p></div>`; return; }
+  const max = Math.max(...rows.map(r => Number(r.revenue)), 1);
+  mount.innerHTML = rows.map((r, i) => `
+    <div class="an-prod">
+      <span class="an-rank">${i + 1}</span>
+      ${r.image ? `<img src="${escUrl(r.image)}" alt="" loading="lazy">` : `<span class="an-noimg"></span>`}
+      <div class="an-prod-main">
+        <strong>${esc(r.name)}</strong>
+        <span>${esc(r.units)} sold · ${money(r.revenue)}</span>
+        <div class="an-track"><span style="width:${(Number(r.revenue) / max) * 100}%"></span></div>
+      </div>
+    </div>`).join("");
+}
+
+function renderStatusBreakdown() {
+  const mount = document.getElementById("an-status");
+  if (!mount) return;
+  const by = (A.an && A.an.by_status) || {};
+  const total = Object.values(by).reduce((t, n) => t + Number(n), 0);
+  if (!total) { mount.innerHTML = `<div class="a-empty"><p>No orders in this period.</p></div>`; return; }
+  mount.innerHTML = `<div class="an-status">${ORDER_STATUSES.map(s => `
+    <button class="an-status-item" data-goto-status="${esc(s.id)}">
+      ${statusChip(s.id)}<strong>${esc(by[s.id] || 0)}</strong>
+    </button>`).join("")}</div>`;
+  mount.querySelectorAll("[data-goto-status]").forEach(b => b.addEventListener("click", () => {
+    switchPane("orders"); setOrderFilter(b.dataset.gotoStatus);
+  }));
 }

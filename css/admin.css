@@ -1298,3 +1298,70 @@ button, .a-tap { min-height: 44px; }
 .a-input::placeholder, .a-textarea::placeholder { color: var(--a-text-3); opacity: 1; }
 /* Email preview mirrors the real email, which now uses readable greys too. */
 .pv-pre, .pv-foot { color: #6B6558; }
+
+/* ══ SALES ANALYTICS ═════════════════════════════════════════════════
+   One data hue (--viz-series, validated both themes). Change vs the
+   previous period is always an arrow plus words, never colour alone. */
+.an-head { margin: 26px 0 12px; }
+.an-title { font-size: 1.05rem; font-weight: 700; margin-bottom: 10px; }
+.an-ranges { margin-bottom: 8px; }
+.an-custom { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin: 4px 0 10px; }
+.an-custom[hidden] { display: none; }
+.an-custom label { display: flex; flex-direction: column; gap: 4px; flex: 1 1 140px; }
+.an-custom label span { font-size: .68rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--a-text-3); }
+.an-custom .a-input { min-height: 44px; }
+.an-range-label { font-size: .82rem; color: var(--a-text-2); }
+
+.an-kpis { grid-template-columns: repeat(2, 1fr); }
+.an-delta { display: flex; align-items: center; gap: 4px; font-weight: 600; }
+.an-delta.up { color: var(--st-good-text); }
+.an-delta.down { color: var(--st-critical-text); }
+.an-delta.flat { color: var(--a-text-2); }
+.an-progress { height: 6px; border-radius: 3px; background: var(--viz-grid); overflow: hidden; margin: 8px 0 4px; }
+.an-progress span { display: block; height: 100%; background: var(--viz-series); border-radius: 3px; }
+
+.an-measure { display: flex; gap: 6px; margin: -4px 0 12px; }
+.an-measure .a-chip { min-height: 36px; padding: 6px 14px; font-size: .78rem; }
+
+.viz-xaxis.an-xaxis { display: grid; gap: 2px; }
+/* Flex alignment (not text-align) so a date wider than its column spills
+   inward: the first tick grows right, the last grows left, the rest centre. */
+.an-xaxis span { display: flex; justify-content: center; font-size: .66rem; color: var(--a-text-3); white-space: nowrap; min-width: 0; }
+.an-xaxis span:first-child { justify-content: flex-start; }
+.an-xaxis span:last-child { justify-content: flex-end; }
+/* Room above the tallest bar for its value label. */
+#chart-mount .viz-chart { margin-top: 26px; }
+.viz-peak-label.at-start { left: 0; transform: none; }
+.viz-peak-label.at-end { left: auto; right: 0; transform: none; }
+
+.an-bar-row { padding: 9px 0; border-bottom: 1px solid var(--a-border); }
+.an-bar-row:last-child { border-bottom: none; }
+.an-bar-top { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; margin-bottom: 6px; }
+.an-bar-top strong { font-size: .86rem; font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.an-bar-top span { font-size: .76rem; color: var(--a-text-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.an-track { height: 8px; border-radius: 4px; background: var(--viz-grid); overflow: hidden; }
+.an-track span { display: block; height: 100%; background: var(--viz-series); border-radius: 0 4px 4px 0; min-width: 2px; }
+
+.an-prod { display: grid; grid-template-columns: 22px 40px minmax(0, 1fr); gap: 10px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--a-border); }
+.an-prod:last-child { border-bottom: none; }
+.an-rank { font-size: .8rem; font-weight: 700; color: var(--a-text-2); text-align: center; font-variant-numeric: tabular-nums; }
+.an-prod img, .an-noimg { width: 40px; height: 50px; border-radius: 6px; object-fit: cover; background: var(--a-sunken); }
+.an-prod-main { min-width: 0; }
+.an-prod-main strong { display: block; font-size: .85rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.an-prod-main span { display: block; font-size: .75rem; color: var(--a-text-2); margin-bottom: 5px; }
+
+.an-status { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.an-status-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 10px 12px; border: 1px solid var(--a-border); border-radius: var(--a-r-sm);
+  background: var(--a-surface-2); text-align: left;
+}
+.an-status-item strong { font-size: 1rem; font-variant-numeric: tabular-nums; }
+.an-status-item:hover { border-color: var(--a-border-str); }
+
+@media (min-width: 560px) { .an-kpis { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 1280px) { .an-kpis { grid-template-columns: repeat(6, 1fr); } }
+@media (max-width: 380px) {
+  .an-status { grid-template-columns: 1fr; }
+  .an-bar-top { flex-direction: column; gap: 2px; }
+}

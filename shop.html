@@ -4,14 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Shop — Dakar Dapper | Premium Men's Wears & Accessories</title>
-  <meta name="description" content="Browse the full Dakar Dapper collection. Premium blazers, trousers, leather goods, watches and more — luxury menswear delivered across Nigeria.">
+  <meta name="description" content="Browse the full Dakar Dapper collection. Shirts, trousers, footwear, accessories and more — menswear delivered across Nigeria.">
   <link rel="canonical" href="https://www.dakardapper.com/shop.html">
 
   <!-- Social sharing (WhatsApp, Instagram, X, Facebook) -->
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Dakar Dapper">
   <meta property="og:title" content="Shop — Dakar Dapper">
-  <meta property="og:description" content="Browse the full Dakar Dapper collection: wears, accessories and footwear, delivered nationwide.">
+  <meta property="og:description" content="Browse the full Dakar Dapper collection, delivered nationwide.">
   <meta property="og:url" content="https://www.dakardapper.com/shop.html">
   <meta property="og:image" content="https://www.dakardapper.com/assets/hero.jpg">
   <meta property="og:image:width" content="1200">
@@ -19,7 +19,7 @@
   <meta property="og:locale" content="en_NG">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Shop — Dakar Dapper">
-  <meta name="twitter:description" content="Browse the full Dakar Dapper collection: wears, accessories and footwear, delivered nationwide.">
+  <meta name="twitter:description" content="Browse the full Dakar Dapper collection, delivered nationwide.">
   <meta name="twitter:image" content="https://www.dakardapper.com/assets/hero.jpg">
   <meta name="theme-color" content="#F8F6F2">
 
@@ -34,7 +34,7 @@
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600;700;800&display=swap"></noscript>
 
   <link rel="preconnect" href="https://cqcyxiqsxcuqikvbkcrs.supabase.co" crossorigin>
-  <link rel="stylesheet" href="css/style.css?v=b2416df4">
+  <link rel="stylesheet" href="css/style.css?v=b0fc5eb1">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16x16.png">
@@ -88,13 +88,7 @@
       <input type="text" id="search-input" placeholder="Search for styles, materials, or products…" autocomplete="off">
       <button id="search-close" aria-label="Close search" style="font-size:1.4rem;color:var(--text-sub)">✕</button>
     </div>
-    <div class="search-tags">
-      <span class="search-tag" data-q="Blazer">Blazers</span>
-      <span class="search-tag" data-q="Watch">Watches</span>
-      <span class="search-tag" data-q="Leather">Leather Goods</span>
-      <span class="search-tag" data-q="Boot">Boots</span>
-      <span class="search-tag" data-q="New">New Arrivals</span>
-    </div>
+    <div class="search-tags" data-search-tags></div>
   </div>
 </div>
 
@@ -114,10 +108,9 @@
     <a href="index.html#about" class="mob-link" data-nav="about">About</a>
     <a href="index.html#contact" class="mob-link" data-nav="contact">Contact</a>
     <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:6px">
-      <a href="#" class="mob-link" onclick="event.preventDefault();closeAllDrawers();openAuth()" style="display:flex;align-items:center;gap:8px">
+      <a href="/account.html" class="mob-link" data-account-link style="display:flex;align-items:center;gap:8px">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-        Sign In / Sign Up
-      </a>
+        <span data-account-label>Sign In / Sign Up</span></a>
     </div>
   </div>
   <div class="mobile-drawer-foot">
@@ -149,23 +142,7 @@
 
         <div class="sidebar-group">
           <h4>Categories</h4>
-          <div id="shop-category-list">
-            <button class="sidebar-link active" data-filter="all" onclick="shopFilter('all',this)">
-              All Products <span class="count" id="count-all">16</span>
-            </button>
-            <button class="sidebar-link" data-filter="wears" onclick="shopFilter('wears',this)">
-              Wears <span class="count" id="count-wears">7</span>
-            </button>
-            <button class="sidebar-link" data-filter="accessories" onclick="shopFilter('accessories',this)">
-              Accessories <span class="count" id="count-accessories">5</span>
-            </button>
-            <button class="sidebar-link" data-filter="footwear" onclick="shopFilter('footwear',this)">
-              Footwear <span class="count" id="count-footwear">3</span>
-            </button>
-            <button class="sidebar-link" data-filter="new" onclick="shopFilter('new',this)">
-              New Arrivals <span class="count" id="count-new">8</span>
-            </button>
-          </div>
+          <div id="shop-category-list"></div>
         </div>
 
         <div class="sidebar-group">
@@ -294,7 +271,7 @@
       </div>
       <div>
         <h4>Shop</h4>
-        <a href="shop.html?cat=wears">Wears</a><a href="shop.html?cat=accessories">Accessories</a><a href="shop.html?cat=footwear">Footwear</a><a href="shop.html?cat=new">New Arrivals</a>
+        <div data-footer-cats></div><a href="shop.html?cat=new">New Arrivals</a>
       </div>
       <div>
         <h4>Company</h4>
@@ -390,8 +367,8 @@
       <div class="auth-field"><label>Email</label><input type="email" placeholder="your@email.com" required></div>
       <div class="auth-field"><label>Password</label><input type="password" placeholder="••••••••" required></div>
       <div class="auth-row">
-        <label><input type="checkbox"> Remember me</label>
-        <a href="#">Forgot password?</a>
+        <label><input type="checkbox" checked> Keep me signed in</label>
+        <a href="#" data-forgot>Forgot password?</a>
       </div>
       <button class="btn btn-dark buy-full" type="submit" style="margin-top:6px">Sign In</button>
     </form>
@@ -427,11 +404,11 @@
 
 <!-- ═══ JavaScript ═══ -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="js/db.js?v=b2416df4"></script>
-<script src="js/products.js?v=b2416df4"></script>
-<script src="js/socials.js?v=b2416df4"></script>
-<script src="js/app.js?v=b2416df4"></script>
-<script src="js/shop.js?v=b2416df4"></script>
+<script src="js/db.js?v=b0fc5eb1"></script>
+<script src="js/products.js?v=b0fc5eb1"></script>
+<script src="js/socials.js?v=b0fc5eb1"></script>
+<script src="js/app.js?v=b0fc5eb1"></script>
+<script src="js/shop.js?v=b0fc5eb1"></script>
 
 <script type="application/ld+json">
 {

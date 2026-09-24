@@ -64,6 +64,7 @@ async function loadPdpProduct(ref) {
 
 /* ── Render ──────────────────────────────────────────────────────────── */
 function renderPdp(p) {
+  if (!PDP || PDP.id !== p.id) recordViewed(p.id);
   PDP = p;
   pdpImages = [p.image, ...(p.images || [])].filter(Boolean);
   if (!pdpImages.length) pdpImages = [""];

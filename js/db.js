@@ -23,7 +23,7 @@ let supabaseClient = null;
       auth: {
         persistSession: true,
         autoRefreshToken: true,
-        detectSessionInUrl: false,
+        detectSessionInUrl: true,
         storageKey: "dd_admin_session"
       }
     });
@@ -352,7 +352,7 @@ async function authCurrentAdmin() {
 async function authSendReset(email) {
   if (!supabaseClient) return false;
   const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
-    redirectTo: window.location.origin + "/admin.html"
+    redirectTo: window.location.origin + "/account.html?reset=1"
   });
   return !error;
 }
@@ -722,4 +722,116 @@ async function dbUnsubscribe(token) {
     const { data, error } = await supabaseClient.rpc("unsubscribe", { p_token: token });
     return error ? { ok: false } : (data || { ok: false });
   } catch { return { ok: false }; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   CUSTOMER ACCOUNT — everything here is limited by the database to the
+   signed-in person's own rows. There is no way to ask for anyone else's.
+   ══════════════════════════════════════════════════════════════════════ */
+
+async function dbMyAccount() {
+  if (!supabaseClient) return null;
+  const { data, error } = await supabaseClient.rpc("my_account");
+  if (error) { console.warn("account:", error.message); return null; }
+  return data;
+}
+
+async function dbSetNewsletter(on) {
+  if (!supabaseClient) return { ok: false, message: "Offline." };
+  const { error } = await supabaseClient.rpc("my_set_newsletter", { p_on: !!on });
+  return error ? { ok: false, message: error.message } : { ok: true };
+}
+
+async function dbLeaveWaitlist(id) {
+  if (!supabaseClient) return false;
+  const { data, error } = await supabaseClient.rpc("my_leave_waitlist", { p_id: id });
+  return !error && !!data;
+}
+
+async function dbDeleteMyReview(id) {
+  if (!supabaseClient) return false;
+  const { data, error } = await supabaseClient.rpc("my_delete_review", { p_id: id });
+  return !error && !!data;
+}
+
+async function dbUpdateMyName(name) {
+  if (!supabaseClient) return { ok: false, message: "Offline." };
+  const { error } = await supabaseClient.auth.updateUser({ data: { full_name: String(name || "").trim().slice(0, 120) } });
+  return error ? { ok: false, message: error.message } : { ok: true };
+}
+
+async function dbUpdateMyPassword(password) {
+  if (!supabaseClient) return { ok: false, message: "Offline." };
+  const { error } = await supabaseClient.auth.updateUser({ password });
+  return error ? { ok: false, message: friendlyAuthError(error.message) } : { ok: true };
+}
+
+async function customerSendReset(email) {
+  if (!supabaseClient) return false;
+  const { error } = await supabaseClient.auth.resetPasswordForEmail(String(email || "").trim(), {
+    redirectTo: window.location.origin + "/account.html?reset=1"
+  });
+  return !error;
+}
+
+async function myUserId() {
+  if (!supabaseClient) return null;
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  return session ? session.user.id : null;
+}
+
+/* Personal lists. RLS makes user_id = auth.uid() the only thing that works. */
+async function dbMyList(table, orderCol) {
+  if (!supabaseClient) return [];
+  const { data, error } = await supabaseClient.from(table).select("*")
+    .order(orderCol, { ascending: false }).limit(60);
+  return error ? [] : (data || []);
+}
+
+async function dbWishlistAdd(productId) {
+  const uid = await myUserId(); if (!uid) return false;
+  const { error } = await supabaseClient.from("dd_wishlist")
+    .upsert({ user_id: uid, product_id: productId }, { onConflict: "user_id,product_id" });
+  return !error;
+}
+async function dbWishlistRemove(productId) {
+  const uid = await myUserId(); if (!uid) return false;
+  const { error } = await supabaseClient.from("dd_wishlist").delete().eq("product_id", productId);
+  return !error;
+}
+async function dbViewedAdd(productId) {
+  const uid = await myUserId(); if (!uid) return false;
+  const { error } = await supabaseClient.from("dd_recently_viewed")
+    .upsert({ user_id: uid, product_id: productId, viewed_at: new Date().toISOString() }, { onConflict: "user_id,product_id" });
+  return !error;
+}
+async function dbViewedClear() {
+  const uid = await myUserId(); if (!uid) return false;
+  const { error } = await supabaseClient.from("dd_recently_viewed").delete().eq("user_id", uid);
+  return !error;
+}
+async function dbSearchAdd(query) {
+  const uid = await myUserId(); if (!uid) return false;
+  const { error } = await supabaseClient.from("dd_search_history").insert({ user_id: uid, query: String(query).slice(0, 100) });
+  return !error;
+}
+async function dbSearchDelete(id) {
+  const uid = await myUserId(); if (!uid) return false;
+  const { error } = await supabaseClient.from("dd_search_history").delete().eq("id", id);
+  return !error;
+}
+async function dbSearchClear() {
+  const uid = await myUserId(); if (!uid) return false;
+  const { error } = await supabaseClient.from("dd_search_history").delete().eq("user_id", uid);
+  return !error;
+}
+
+/* ── Admin: sales analytics for any timeframe ────────────────────────── */
+async function dbSalesAnalytics(from, to, bucket) {
+  if (!supabaseClient) return null;
+  const { data, error } = await supabaseClient.rpc("sales_analytics", {
+    p_from: from.toISOString(), p_to: to.toISOString(), p_bucket: bucket
+  });
+  if (error) { console.warn("analytics:", error.message); return { error: error.message }; }
+  return data;
 }

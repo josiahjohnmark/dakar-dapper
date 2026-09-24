@@ -176,7 +176,7 @@ let userEmailFromCheckout = "";
 /* ── INIT ──────────────────────────────────────────────────────────── */
 document.addEventListener("DOMContentLoaded", () => {
   hydratePageContent();
-  renderCategoryFilters();
+  renderCatalogChrome();
   renderProducts();
   bindHeader();
   bindFilters();
@@ -500,8 +500,11 @@ function toggleWish(id) {
   saveWish();
   renderProducts();
   renderWishlist();
+  if (currentUser && typeof dbWishlistAdd === "function") {
+    if (i < 0) dbWishlistAdd(id); else dbWishlistRemove(id);
+  }
   const p = PRODUCTS.find(x => x.id === id);
-  if (i < 0) showToast(`${p.name} saved to wishlist`);
+  if (i < 0 && p) showToast(`${p.name} saved to wishlist`);
 }
 
 function renderWishlist() {
@@ -538,6 +541,7 @@ function renderWishlist() {
 function openProduct(id) {
   const p = PRODUCTS.find(x => x.id === id);
   if (!p) return;
+  recordViewed(p.id);
   currentModal = p;
   galleryIndex = 0;
   hasViewedCollections = true;
@@ -1032,7 +1036,10 @@ function handleOrderDoneContinue() {
 function bindAuth() {
   const authToggle = document.getElementById("auth-toggle");
   if (authToggle) {
-    authToggle.addEventListener("click", openAuth);
+    authToggle.addEventListener("click", () => {
+      if (currentUser) window.location.href = "/account.html";
+      else openAuth();
+    });
   }
   const authClose = document.getElementById("auth-close");
   if (authClose) {
@@ -1050,6 +1057,23 @@ function bindAuth() {
   // Form submissions
   const signinForm = document.getElementById("signin-form");
   if (signinForm) signinForm.addEventListener("submit", handleCustomerSignIn);
+
+  // Mobile menu "Sign in / My account"
+  document.querySelectorAll("[data-account-link]").forEach(a => a.addEventListener("click", e => {
+    if (!currentUser) { e.preventDefault(); closeAllDrawers(); openAuth(); }
+  }));
+
+  // Forgot password: email a reset link that opens the account page
+  document.querySelectorAll("[data-forgot]").forEach(a => a.addEventListener("click", async e => {
+    e.preventDefault();
+    const email = (document.querySelector('#signin-form input[type="email"]')?.value || "").trim();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+      return authError("signin-form", "Type your email above, then tap “Forgot password?” again.");
+    }
+    await customerSendReset(email);
+    authError("signin-form", "");
+    showToast("If that email has an account, a reset link is on its way.");
+  }));
   const signupForm = document.getElementById("signup-form");
   if (signupForm) signupForm.addEventListener("submit", handleCustomerSignUp);
 
@@ -1057,7 +1081,11 @@ function bindAuth() {
 }
 
 function authError(formId, message) {
-  const box = document.querySelector(`#${formId} .auth-error`);
+  // The message box sits just above its form, not inside it.
+  const form = document.getElementById(formId);
+  const prev = form && form.previousElementSibling;
+  const box = (prev && prev.classList.contains("auth-error")) ? prev
+            : document.querySelector(`#${formId} .auth-error`);
   if (!box) return;
   box.textContent = message || "";
   box.hidden = !message;
@@ -1107,7 +1135,12 @@ async function handleCustomerSignUp(e) {
 
 async function refreshAuthState() {
   if (typeof customerCurrent !== "function") return;
+  const before = currentUser ? currentUser.id : null;
   currentUser = await customerCurrent();
+  if (currentUser && currentUser.id !== before) syncPersonalData();
+  document.querySelectorAll("[data-account-link]").forEach(a => {
+    a.querySelector("[data-account-label]").textContent = currentUser ? "My account" : "Sign In / Sign Up";
+  });
   const btn = document.getElementById("auth-toggle");
   if (!btn) return;
   const name = currentUser?.user_metadata?.full_name || currentUser?.email || "";
@@ -1145,28 +1178,6 @@ function switchAuthTab(tab) {
 }
 
 /* ── SEARCH ────────────────────────────────────────────────────────── */
-function bindSearch() {
-  const searchToggle = document.getElementById("search-toggle");
-  if (!searchToggle) return;
-  searchToggle.addEventListener("click", () => {
-    document.getElementById("search-overlay").classList.add("open");
-    document.getElementById("search-input").focus();
-  });
-  document.getElementById("search-close").addEventListener("click", () => {
-    document.getElementById("search-overlay").classList.remove("open");
-    document.getElementById("search-input").value = "";
-    renderProducts();
-  });
-  document.getElementById("search-input").addEventListener("input", e => {
-    renderProducts("all", e.target.value);
-  });
-  document.querySelectorAll(".search-tag").forEach(tag => {
-    tag.addEventListener("click", () => {
-      document.getElementById("search-input").value = tag.dataset.q;
-      renderProducts("all", tag.dataset.q);
-    });
-  });
-}
 
 /* ── WHATSAPP ──────────────────────────────────────────────────────── */
 function bindWhatsApp() {
@@ -1400,21 +1411,6 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 /* ── DYNAMIC CATEGORY FILTERS ──────────────────────────────────────── */
-function renderCategoryFilters() {
-  const bar = document.getElementById("filter-bar");
-  if (!bar) return;
-  const cats = (typeof CATEGORIES !== "undefined" && CATEGORIES.length) ? CATEGORIES : [
-    { id: "wears", name: "Wears" },
-    { id: "accessories", name: "Accessories" },
-    { id: "footwear", name: "Footwear" }
-  ];
-
-  bar.innerHTML = `
-    <button class="filter-btn${activeFilter === 'all' ? ' active' : ''}" data-filter="all">All</button>
-    ${cats.map(c => `<button class="filter-btn${activeFilter === c.id ? ' active' : ''}" data-filter="${c.id}">${c.name}</button>`).join("")}
-    <button class="filter-btn${activeFilter === 'new' ? ' active' : ''}" data-filter="new">New Arrivals</button>
-  `;
-}
 
 /* ── CMS PAGE CONTENT HYDRATION ────────────────────────────────────── */
 function hydratePageContent() {
@@ -1486,3 +1482,240 @@ function hydratePageContent() {
   });
 }
 
+/* ══════════════════════════════════════════════════════════════════════
+   REAL CATEGORIES ONLY
+   Everything below is built from the live catalogue. A category with no
+   products is not shown to shoppers (it still exists in the admin).
+   ══════════════════════════════════════════════════════════════════════ */
+
+function liveCategories() {
+  const cats = (typeof CATEGORIES !== "undefined" && Array.isArray(CATEGORIES)) ? CATEGORIES : [];
+  return cats.filter(c => PRODUCTS.some(p => p.category === c.id && p.isActive !== false));
+}
+
+function renderCategoryFilters() {
+  const bar = document.getElementById("filter-bar");
+  if (!bar) return;
+  const cats = liveCategories();
+  bar.innerHTML = `
+    <button class="filter-btn${activeFilter === 'all' ? ' active' : ''}" data-filter="all">All</button>
+    ${cats.map(c => `<button class="filter-btn${activeFilter === c.id ? ' active' : ''}" data-filter="${esc(c.id)}">${esc(c.name)}</button>`).join("")}
+    ${PRODUCTS.some(p => p.isNew) ? `<button class="filter-btn${activeFilter === 'new' ? ' active' : ''}" data-filter="new">New Arrivals</button>` : ""}
+  `;
+}
+
+/* Homepage "Browse by categories": one card per category that has stock,
+   pictured with one of its own products. */
+function renderHomeCategories() {
+  const grid = document.getElementById("cat-grid");
+  if (!grid) return;
+  const cats = liveCategories().slice(0, 6);
+  const section = grid.closest("section");
+  if (section) section.hidden = !cats.length;
+  grid.innerHTML = cats.map(c => {
+    const items = PRODUCTS.filter(p => p.category === c.id && p.isActive !== false);
+    const cover = items.find(p => p.stock > 0 && (p.thumb || p.image)) || items.find(p => p.thumb || p.image);
+    return `
+      <a href="/shop.html?cat=${encodeURIComponent(c.id)}" class="cat-card" data-cat="${esc(c.id)}">
+        ${cover ? productPicture(cover.thumb || cover.image, c.name, "", 600, 750) : ""}
+        <div class="cat-card-overlay">
+          <h3>${esc(c.name)}</h3>
+          <p>${items.length} piece${items.length === 1 ? "" : "s"}</p>
+          <span class="btn btn-sm btn-outline-light">Shop ${esc(c.name)} →</span>
+        </div>
+      </a>`;
+  }).join("");
+}
+
+/* The story section shows a real piece from the collection. */
+function renderEditorialImage() {
+  const img = document.getElementById("editorial-img");
+  if (!img || !PRODUCTS.length) return;
+  const pick = [...PRODUCTS].filter(p => p.isActive !== false && p.image).sort((a, b) => b.id - a.id)[0];
+  if (pick) { img.src = assetUrl(pick.image); img.alt = pick.name; }
+}
+
+function renderFooterCategories() {
+  document.querySelectorAll("[data-footer-cats]").forEach(box => {
+    box.innerHTML = liveCategories().slice(0, 5).map(c =>
+      `<a href="/shop.html?cat=${encodeURIComponent(c.id)}">${esc(c.name)}</a>`).join("");
+  });
+}
+
+function renderCatalogChrome() {
+  renderCategoryFilters();
+  renderHomeCategories();
+  renderEditorialImage();
+  renderFooterCategories();
+  renderSearchPanel();
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   PERSONAL HISTORY — search, recently viewed, wishlist
+   Kept on the device for guests. For a signed-in customer it is also saved
+   to their account (private to them), so it follows them across devices and
+   shows in their profile.
+   ══════════════════════════════════════════════════════════════════════ */
+
+const LOCAL_SEARCHES = "dd_recent_searches";
+const LOCAL_VIEWED = "dd_recently_viewed";
+
+function localList(key) { return readJSON(key, []).filter(Boolean); }
+function saveLocalList(key, list) { try { localStorage.setItem(key, JSON.stringify(list)); } catch {} }
+
+function recordSearch(q) {
+  const query = String(q || "").trim();
+  if (query.length < 2) return;
+  const list = localList(LOCAL_SEARCHES).filter(x => x.toLowerCase() !== query.toLowerCase());
+  list.unshift(query);
+  saveLocalList(LOCAL_SEARCHES, list.slice(0, 12));
+  if (currentUser && typeof dbSearchAdd === "function") dbSearchAdd(query);
+}
+
+function clearRecentSearches() {
+  saveLocalList(LOCAL_SEARCHES, []);
+  if (currentUser && typeof dbSearchClear === "function") dbSearchClear();
+  renderSearchPanel();
+}
+
+function recordViewed(productId) {
+  const id = Number(productId);
+  if (!id) return;
+  const list = localList(LOCAL_VIEWED).filter(x => x !== id);
+  list.unshift(id);
+  saveLocalList(LOCAL_VIEWED, list.slice(0, 20));
+  if (currentUser && typeof dbViewedAdd === "function") dbViewedAdd(id);
+}
+
+/* When someone signs in, bring what they did as a guest into their account
+   and pull their saved wishlist onto this device. */
+async function syncPersonalData() {
+  if (!currentUser || typeof dbMyList !== "function") return;
+  try {
+    const [serverWish] = await Promise.all([dbMyList("dd_wishlist", "created_at")]);
+    const serverIds = serverWish.map(w => Number(w.product_id));
+    const localOnly = wishlist.filter(id => !serverIds.includes(id));
+    await Promise.all(localOnly.map(id => dbWishlistAdd(id)));
+    wishlist = [...new Set([...serverIds, ...wishlist])].filter(id => PRODUCTS.length === 0 || PRODUCTS.some(p => p.id === id));
+    saveWish();
+    renderWishlist();
+    if (typeof renderProducts === "function") renderProducts();
+    for (const id of localList(LOCAL_VIEWED).slice(0, 10).reverse()) await dbViewedAdd(id);
+  } catch (err) {
+    console.warn("sync:", err);
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   HEADER SEARCH
+   Live suggestions as you type, Enter for full results in the shop, and
+   recent searches when the box is empty. Works on every page (it used to
+   render into a grid that only exists on the homepage).
+   ══════════════════════════════════════════════════════════════════════ */
+
+function searchMatches(q) {
+  const words = String(q || "").toLowerCase().split(/\s+/).filter(Boolean);
+  if (!words.length) return [];
+  const cats = typeof CATEGORIES !== "undefined" ? CATEGORIES : [];
+  return PRODUCTS.filter(p => p.isActive !== false).filter(p => {
+    const catName = (cats.find(c => c.id === p.category) || {}).name || "";
+    const hay = [p.name, p.subtitle, catName, p.badge, ...(p.colorNames || [])].filter(Boolean).join(" ").toLowerCase();
+    return words.every(w => hay.includes(w));
+  });
+}
+
+function goToSearch(q) {
+  const query = String(q || "").trim();
+  if (!query) return;
+  recordSearch(query);
+  window.location.href = `/shop.html?q=${encodeURIComponent(query)}`;
+}
+
+function renderSearchPanel(query) {
+  const tags = document.querySelectorAll("[data-search-tags]");
+  if (!tags.length) return;
+  const q = String(query ?? (document.getElementById("search-input")?.value || "")).trim();
+
+  let html = "";
+  if (q) {
+    const hits = searchMatches(q);
+    html = hits.length ? `
+      <ul class="search-results" role="listbox" aria-label="Matching products">
+        ${hits.slice(0, 6).map(p => `
+          <li role="option">
+            <a class="search-hit" href="${productHref(p)}" data-search-q="${esc(q)}">
+              ${productPicture(p.thumb || p.image, "", "", 56, 70)}
+              <span class="search-hit-text">
+                <strong>${esc(p.name)}</strong>
+                <span>${formatPrice(p.price)}${p.stock <= 0 ? " · Sold out" : ""}</span>
+              </span>
+            </a>
+          </li>`).join("")}
+      </ul>
+      <a class="search-all" href="/shop.html?q=${encodeURIComponent(q)}" data-search-q="${esc(q)}">
+        See all ${hits.length} result${hits.length === 1 ? "" : "s"} for “${esc(q)}” →
+      </a>`
+    : `<p class="search-none">Nothing matches “${esc(q)}”. Try a shorter word, or browse below.</p>`;
+  }
+
+  const recent = localList(LOCAL_SEARCHES);
+  if (!q && recent.length) {
+    html += `
+      <div class="search-block">
+        <div class="search-block-head">
+          <span>Recent searches</span>
+          <button type="button" class="search-clear" data-clear-searches>Clear</button>
+        </div>
+        <div class="search-chips">
+          ${recent.slice(0, 8).map(r => `<button type="button" class="search-tag" data-q="${esc(r)}">${esc(r)}</button>`).join("")}
+        </div>
+      </div>`;
+  }
+
+  const cats = liveCategories();
+  if (!q && cats.length) {
+    html += `
+      <div class="search-block">
+        <div class="search-block-head"><span>Browse</span></div>
+        <div class="search-chips">
+          ${cats.map(c => `<a class="search-tag" href="/shop.html?cat=${encodeURIComponent(c.id)}">${esc(c.name)}</a>`).join("")}
+          ${PRODUCTS.some(p => p.isNew) ? `<a class="search-tag" href="/shop.html?cat=new">New Arrivals</a>` : ""}
+        </div>
+      </div>`;
+  }
+
+  tags.forEach(t => { t.innerHTML = html; });
+}
+
+function bindSearch() {
+  const toggle = document.getElementById("search-toggle");
+  const overlay = document.getElementById("search-overlay");
+  const input = document.getElementById("search-input");
+  if (!toggle || !overlay || !input) return;
+
+  input.setAttribute("enterkeyhint", "search");
+  input.setAttribute("aria-label", "Search products");
+
+  toggle.addEventListener("click", () => {
+    overlay.classList.add("open");
+    renderSearchPanel("");
+    setTimeout(() => input.focus(), 60);
+  });
+  document.getElementById("search-close").addEventListener("click", () => {
+    overlay.classList.remove("open");
+    input.value = "";
+  });
+  input.addEventListener("input", () => renderSearchPanel(input.value));
+  input.addEventListener("keydown", e => {
+    if (e.key === "Enter") { e.preventDefault(); goToSearch(input.value); }
+    if (e.key === "Escape") document.getElementById("search-close").click();
+  });
+
+  overlay.addEventListener("click", e => {
+    const chip = e.target.closest("button.search-tag[data-q]");
+    if (chip) { input.value = chip.dataset.q; renderSearchPanel(chip.dataset.q); input.focus(); return; }
+    if (e.target.closest("[data-clear-searches]")) { clearRecentSearches(); return; }
+    const link = e.target.closest("[data-search-q]");
+    if (link) recordSearch(link.dataset.searchQ);
+  });
+}

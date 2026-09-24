@@ -14,7 +14,7 @@
 ## ✨ Features
 
 - **Responsive Luxury UI**: Tailored for mobile, tablet, and desktop viewports with fluid typography and micro-animations.
-- **Curated Catalog**: Filter products by category (All, Wears, Accessories, Footwear).
+- **Curated Catalog**: Filter products by the categories set in the admin.
 - **Quick View Modal**: Interactive product detail preview with color swatches, size selectors, quantity controls, and feature tabs.
 - **Slide-out Cart Drawer**: Real-time cart calculations with a free-shipping progress tracker and direct checkout.
 - **Wishlist Drawer**: Save favorite items and transfer directly to cart.
