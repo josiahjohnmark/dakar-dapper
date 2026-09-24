@@ -85,7 +85,7 @@ function orderConfirmationHtml(p: Record<string, any>) {
       </td>
       <td style="padding:14px 12px;border-bottom:1px solid #EAE6DF;vertical-align:top">
         <div style="font-size:14px;font-weight:600;color:#1A1A1A;line-height:1.4">${esc(it.name)}</div>
-        <div style="font-size:12px;color:#7A7468;margin-top:3px">
+        <div style="font-size:12px;color:#6B6558;margin-top:3px">
           ${[it.size, it.color].filter(Boolean).map(esc).join(" &middot; ")}
           ${it.size || it.color ? " &middot; " : ""}Qty ${esc(it.qty)}
         </div>
@@ -150,11 +150,11 @@ function orderConfirmationHtml(p: Record<string, any>) {
                    style="background:#F7F5F1;border-radius:10px">
               <tr>
                 <td style="padding:16px 18px;text-align:center">
-                  <div style="font-size:11px;letter-spacing:.14em;color:#8A8377;
+                  <div style="font-size:11px;letter-spacing:.14em;color:#6F6A5F;
                               text-transform:uppercase">Order reference</div>
                   <div style="font-size:20px;font-weight:700;letter-spacing:.08em;
                               color:#1A1A1A;margin-top:4px">${esc(p.order_number)}</div>
-                  ${placed ? `<div style="font-size:12px;color:#8A8377;margin-top:4px">Placed ${esc(placed)}</div>` : ""}
+                  ${placed ? `<div style="font-size:12px;color:#6F6A5F;margin-top:4px">Placed ${esc(placed)}</div>` : ""}
                 </td>
               </tr>
             </table>
@@ -164,7 +164,7 @@ function orderConfirmationHtml(p: Record<string, any>) {
         <!-- Items -->
         <tr>
           <td style="padding:26px 28px 0">
-            <div style="font-size:11px;letter-spacing:.14em;color:#8A8377;
+            <div style="font-size:11px;letter-spacing:.14em;color:#6F6A5F;
                         text-transform:uppercase;font-weight:700;
                         padding-bottom:6px;border-bottom:2px solid #1A1A1A">
               Your order
@@ -202,7 +202,7 @@ function orderConfirmationHtml(p: Record<string, any>) {
         <!-- Delivery -->
         <tr>
           <td style="padding:26px 28px 0">
-            <div style="font-size:11px;letter-spacing:.14em;color:#8A8377;
+            <div style="font-size:11px;letter-spacing:.14em;color:#6F6A5F;
                         text-transform:uppercase;font-weight:700;
                         padding-bottom:6px;border-bottom:2px solid #1A1A1A">
               Delivering to
@@ -221,7 +221,7 @@ function orderConfirmationHtml(p: Record<string, any>) {
         <!-- What happens next -->
         <tr>
           <td style="padding:26px 28px 0">
-            <div style="font-size:11px;letter-spacing:.14em;color:#8A8377;
+            <div style="font-size:11px;letter-spacing:.14em;color:#6F6A5F;
                         text-transform:uppercase;font-weight:700;
                         padding-bottom:6px;border-bottom:2px solid #1A1A1A">
               What happens next
@@ -255,20 +255,20 @@ function orderConfirmationHtml(p: Record<string, any>) {
         <!-- Footer -->
         <tr>
           <td style="padding:26px 28px 30px;text-align:center;border-top:1px solid #EAE6DF;margin-top:20px">
-            <p style="margin:0 0 8px;font-size:12px;color:#8A8377;line-height:1.6">
+            <p style="margin:0 0 8px;font-size:12px;color:#6F6A5F;line-height:1.6">
               Questions about this order? Reply to this email or message us on WhatsApp,
               quoting <strong>${esc(p.order_number)}</strong>.
             </p>
-            <p style="margin:0;font-size:11px;color:#A8A196">
+            <p style="margin:0;font-size:11px;color:#6F6A5F">
               Dakar Dapper &middot; Mainland, Lagos, Nigeria<br>
-              <a href="${esc(STORE_URL)}/shipping.html" style="color:#A8A196">Shipping &amp; Returns</a> &middot;
-              <a href="${esc(STORE_URL)}/privacy.html" style="color:#A8A196">Privacy</a>
+              <a href="${esc(STORE_URL)}/shipping.html" style="color:#6F6A5F">Shipping &amp; Returns</a> &middot;
+              <a href="${esc(STORE_URL)}/privacy.html" style="color:#6F6A5F">Privacy</a>
             </p>
           </td>
         </tr>
       </table>
 
-      <div style="max-width:560px;margin:14px auto 0;font-size:11px;color:#A8A196;text-align:center">
+      <div style="max-width:560px;margin:14px auto 0;font-size:11px;color:#6F6A5F;text-align:center">
         You are receiving this because you placed an order at Dakar Dapper.
       </div>
     </td></tr>
@@ -353,7 +353,7 @@ function backInStockHtml(p: Record<string, any>) {
             Shop it now
           </a>
         </td></tr>
-        <tr><td style="padding:0 28px 28px;text-align:center;font-size:11px;color:#A8A196">
+        <tr><td style="padding:0 28px 28px;text-align:center;font-size:11px;color:#6F6A5F">
           You asked for this alert at Dakar Dapper. We will not email you about it again.
         </td></tr>
       </table>
@@ -391,7 +391,7 @@ function productGrid(products: any[]) {
   if (!products?.length) return "";
   const cells = products.slice(0, 6).map(pr => {
     const was = Number(pr.original_price) > Number(pr.price)
-      ? `<span style="color:#A8A196;text-decoration:line-through;font-size:12px;margin-left:6px">${esc(naira(pr.original_price))}</span>`
+      ? `<span style="color:#6F6A5F;text-decoration:line-through;font-size:12px;margin-left:6px">${esc(naira(pr.original_price))}</span>`
       : "";
     const url = `${STORE_URL}/product/${encodeURIComponent(pr.slug ?? "")}`;
     return `
@@ -462,13 +462,13 @@ function campaignHtml(p: Record<string, any>) {
         </td></tr>
 
         <tr><td style="padding:22px 28px 28px;border-top:1px solid #EAE6DF;text-align:center">
-          <p style="margin:0 0 8px;font-size:12px;color:#8A8377;line-height:1.6">
+          <p style="margin:0 0 8px;font-size:12px;color:#6F6A5F;line-height:1.6">
             Questions? <a href="https://wa.me/${esc(WHATSAPP)}" style="color:#6B6558">Message us on WhatsApp</a>.
           </p>
-          <p style="margin:0;font-size:11px;color:#A8A196;line-height:1.7">
+          <p style="margin:0;font-size:11px;color:#6F6A5F;line-height:1.7">
             You are receiving this because you signed up for news from Dakar Dapper.<br>
-            <a href="${esc(unsubscribeUrl(p))}" style="color:#A8A196">Unsubscribe</a> &middot;
-            <a href="${esc(STORE_URL)}/privacy.html" style="color:#A8A196">Privacy</a><br>
+            <a href="${esc(unsubscribeUrl(p))}" style="color:#6F6A5F">Unsubscribe</a> &middot;
+            <a href="${esc(STORE_URL)}/privacy.html" style="color:#6F6A5F">Privacy</a><br>
             Dakar Dapper &middot; Mainland, Lagos, Nigeria
           </p>
         </td></tr>

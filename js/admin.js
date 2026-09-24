@@ -1685,7 +1685,7 @@ function renderReviewFilters() {
 
 function reviewStars(n) {
   return `<span class="rev-stars" aria-label="${n} out of 5">` +
-    [1,2,3,4,5].map(i => `<span class="${i <= n ? "on" : ""}">★</span>`).join("") + `</span>`;
+    [1,2,3,4,5].map(i => i <= n ? `<span class="on">★</span>` : `<span>☆</span>`).join("") + `</span>`;
 }
 
 function renderReviewsList() {

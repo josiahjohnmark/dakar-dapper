@@ -79,7 +79,7 @@
 .pdp-cat {
   font-size: .68rem; font-weight: 700;
   letter-spacing: .18em; text-transform: uppercase;
-  color: var(--gold);
+  color: var(--gold-text);
 }
 .pdp-title {
   font-size: clamp(1.6rem, 6vw, 2.3rem);
@@ -93,7 +93,7 @@
   gap: 8px 14px; margin-bottom: 14px;
   font-size: .82rem;
 }
-.pdp-stars { color: var(--gold); letter-spacing: .06em; }
+.pdp-stars { color: var(--gold-text); letter-spacing: .06em; }
 .pdp-stars .num { color: var(--text-sub); margin-left: 5px; letter-spacing: 0; }
 .pdp-reviews { color: var(--text-faint); }
 .pdp-stock { font-weight: 600; }

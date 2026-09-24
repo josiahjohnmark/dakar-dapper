@@ -458,7 +458,7 @@ let reviewStars = 0;
 function starRow(value, size) {
   const full = Math.round(Number(value) || 0);
   return `<span class="stars-row${size ? " " + size : ""}" aria-hidden="true">` +
-    [1, 2, 3, 4, 5].map(n => `<span class="star${n <= full ? " on" : ""}">★</span>`).join("") +
+    [1, 2, 3, 4, 5].map(n => n <= full ? `<span class="star on">★</span>` : `<span class="star">☆</span>`).join("") +
     `</span>`;
 }
 

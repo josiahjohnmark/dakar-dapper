@@ -8,8 +8,8 @@
   --p-surface: #FFFFFF;
   --p-text: #1A1A1A;
   --p-sub: #5C584E;
-  --p-faint: #8A857A;
-  --p-gold: #B8965A;
+  --p-faint: #6F6A5F;
+  --p-gold: #8A6D34;
   --p-border: #E5E2DD;
   --p-ink: #14130E;
 }
@@ -20,7 +20,7 @@
     --p-surface: #1C1B18;
     --p-text: #F5F3EE;
     --p-sub: #B6B2A8;
-    --p-faint: #837F76;
+    --p-faint: #9A958A;
     --p-gold: #D4B97C;
     --p-border: #2E2C28;
     --p-ink: #F5F3EE;

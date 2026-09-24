@@ -16,7 +16,8 @@
   --gold-light: #D4B97C;
   --text:       #1A1A1A;
   --text-sub:   #6B6B6B;
-  --text-faint: #999999;
+  --text-faint: #6E6E6E;   /* was #999 (2.8:1); now 4.9:1 on the page */
+  --gold-text:  #8A6D34;   /* gold used as text on light backgrounds: 4.6:1 */
   --text-white: #FFFFFF;
   --border:     #E5E2DD;
   --border-dark:#2A2A2A;
@@ -221,7 +222,7 @@ ul{list-style:none}
   font-size:.65rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
 }
 .p-badge .tag-dark{background:var(--bg-dark);color:#fff}
-.p-badge .tag-gold{background:var(--gold);color:#fff}
+.p-badge .tag-gold{background:var(--gold);color:#1A1508}
 
 /* Heart button */
 .heart-btn{
@@ -257,7 +258,7 @@ ul{list-style:none}
 .p-info{padding:14px 4px 0}
 .p-info-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:2px}
 .p-cat{font-size:.65rem;font-weight:700;letter-spacing:.1em;color:var(--text-faint);text-transform:uppercase}
-.p-rating{font-size:.72rem;font-weight:700;color:var(--gold)}
+.p-rating{font-size:.72rem;font-weight:700;color:var(--gold-text)}
 .p-name{font-size:.92rem;font-weight:600;line-height:1.35;margin-bottom:3px;cursor:pointer;transition:color .2s}
 .p-name:hover{color:var(--gold)}
 .p-sub{font-size:.75rem;color:var(--text-sub);margin-bottom:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -308,10 +309,10 @@ ul{list-style:none}
   border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);
   color:#fff;font-size:.88rem;outline:none;
 }
-.newsletter input::placeholder{color:rgba(255,255,255,.35)}
+.newsletter input::placeholder{color:rgba(255,255,255,.62)}
 
 /* ── Footer ───────────────────────────────────────────────────────── */
-.footer{background:#080808;color:#777;padding:60px 0 40px;font-size:.82rem}
+.footer{background:#080808;color:#8C8C8C;padding:60px 0 40px;font-size:.82rem}
 .footer-grid{display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:40px;margin-bottom:40px}
 .footer-brand{display:flex;align-items:center;gap:8px;margin-bottom:14px}
 .footer-brand .logo-name{color:#fff;font-size:1rem}
@@ -485,7 +486,7 @@ ul{list-style:none}
 .tab-pane.active{display:block}
 .detail-list{display:flex;flex-direction:column;gap:10px}
 .detail-list li{display:flex;align-items:flex-start;gap:10px;font-size:.88rem;color:var(--text-sub)}
-.detail-list .check{color:var(--gold);flex-shrink:0}
+.detail-list .check{color:var(--gold-text);flex-shrink:0}
 
 /* Related products */
 .related{border-top:1px solid var(--border);padding-top:30px}
@@ -761,7 +762,7 @@ ul{list-style:none}
 }
 .breadcrumb a{color:var(--text-sub);transition:color .2s}
 .breadcrumb a:hover{color:var(--text)}
-.breadcrumb .sep{opacity:.4}
+.breadcrumb .sep{color:var(--text-faint)}
 .breadcrumb .current{color:var(--text);font-weight:600}
 .shop-layout{display:grid;grid-template-columns:260px 1fr;gap:36px;align-items:start}
 .shop-sidebar{position:sticky;top:90px}
@@ -1514,8 +1515,8 @@ ul{list-style:none}
 
 /* ── Stars ──────────────────────────────────────────────────────────── */
 .stars-row { display: inline-flex; gap: 1px; letter-spacing: 0; }
-.stars-row .star { color: var(--border); font-size: .92rem; line-height: 1; }
-.stars-row .star.on { color: var(--gold); }
+.stars-row .star { color: var(--text-faint); font-size: .92rem; line-height: 1; }
+.stars-row .star.on { color: var(--gold-text); }
 .stars-row.lg .star { font-size: 1.2rem; }
 
 /* ── Rating line on the product page ────────────────────────────────── */
@@ -1675,7 +1676,7 @@ ul{list-style:none}
   opacity: .32;
   transition: opacity .15s, color .15s, transform .12s;
 }
-.star-btn.on, .star-btn.hover { color: var(--gold); opacity: 1; }
+.star-btn.on, .star-btn.hover { color: var(--gold-text); opacity: 1; }
 .star-btn:active { transform: scale(.88); }
 
 .review-note {
@@ -1874,14 +1875,14 @@ ul{list-style:none}
 }
 .contact-kicker {
   font-size: .72rem; font-weight: 700; letter-spacing: .2em;
-  text-transform: uppercase; color: var(--gold);
+  text-transform: uppercase; color: var(--gold-text);
 }
 .contact-intro h2 { font-size: clamp(1.9rem, 5vw, 2.6rem); line-height: 1.1; margin: 8px 0 10px; }
 .contact-intro > p { color: var(--text-sub); line-height: 1.7; max-width: 44ch; margin-bottom: 22px; }
 .contact-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 22px; }
 .contact-actions .btn { min-height: 48px; display: inline-flex; align-items: center; gap: 9px; }
-.contact-wa { background: #128C4B; border-color: #128C4B; }
-.contact-wa:hover { background: #0e7a41; }
+.contact-wa { background: #0F7A40; border-color: #0F7A40; }
+.contact-wa:hover { background: #0B6534; }
 .contact-facts { list-style: none; padding: 0; display: grid; gap: 8px; font-size: .88rem; color: var(--text-sub); }
 .contact-facts strong {
   display: inline-block; min-width: 76px; color: var(--text);
@@ -1924,3 +1925,8 @@ ul{list-style:none}
 .footer .social-row { gap: 6px; }
 .footer .social-link { width: 34px; height: 34px; }
 .footer .social-link svg { width: 16px; height: 16px; }
+
+/* ── Legibility ───────────────────────────────────────────────────────
+   The discreet admin link in the footer was 45% opacity (1.8:1). */
+.footer-manage { color: #8C8C8C; }
+.footer-manage:hover { color: var(--gold); }
