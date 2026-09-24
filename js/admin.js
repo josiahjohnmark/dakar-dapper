@@ -47,6 +47,7 @@ const A = {
   campaignStats: {},
   camp: null,
   campReach: 0,
+  socialsDraft: null,
   orderFilter: "all",
   orderSearch: "",
   productFilter: "all",
@@ -279,6 +280,8 @@ async function loadAll() {
   renderProducts();
   renderCategories();
   renderCmsForm();
+  A.socialsDraft = null;          // start from what is saved
+  renderSocialsEditor();
   renderShippingForm();
   renderAudit();
   renderReviewFilters();
@@ -1506,16 +1509,6 @@ function renderCmsForm() {
         <input class="a-input" id="cms-phone-display" value="${esc(c.phoneDisplay || "")}">
       </div>
     </div>
-    <div class="a-row">
-      <div class="a-field">
-        <label for="cms-ig">Instagram URL</label>
-        <input class="a-input" id="cms-ig" value="${esc(c.instagramUrl || "")}" placeholder="https://instagram.com/…">
-      </div>
-      <div class="a-field">
-        <label for="cms-tw">X / Twitter URL</label>
-        <input class="a-input" id="cms-tw" value="${esc(c.twitterUrl || "")}">
-      </div>
-    </div>
     <div class="a-field">
       <label for="cms-email">Contact email</label>
       <input class="a-input" id="cms-email" type="email" value="${esc(c.emailAddress || "")}">
@@ -1535,7 +1528,7 @@ async function saveCms() {
     bannerNotice: v("cms-banner"),
     storyTitle: v("cms-story-title"), storyDesc: v("cms-story-desc"),
     phone: v("cms-phone").replace(/\D/g, ""), phoneDisplay: v("cms-phone-display"),
-    instagramUrl: v("cms-ig"), twitterUrl: v("cms-tw"), emailAddress: v("cms-email"),
+    emailAddress: v("cms-email"),
     freeShipMin: A.content?.freeShipMin || 150000,
     popupDelaySec: A.content?.popupDelaySec || 30,
     heroBtn1Text: A.content?.heroBtn1Text || "Shop Collection",
@@ -2657,4 +2650,180 @@ function openCampaignSummary(c) {
   document.getElementById("camp-dup").addEventListener("click", () => {
     openCampaignEditor({ ...c, id: null, status: "draft", name: c.name + " (copy)" });
   });
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   SOCIAL LINKS
+   One ordered list. Paste a link and the platform is recognised, tracking
+   tags are stripped, and the real brand icon is shown. Order here is the
+   order on the site.
+   ══════════════════════════════════════════════════════════════════════ */
+
+function socialsReady() {
+  return A.content && Array.isArray(A.content.socials);
+}
+
+function renderSocialsEditor() {
+  const mount = document.getElementById("socials-editor");
+  if (!mount) return;
+
+  if (!socialsReady()) {
+    mount.innerHTML = `<div class="a-empty"><p>Run <strong>supabase/007_socials.sql</strong>
+      in the Supabase SQL Editor to turn on social links.</p></div>`;
+    return;
+  }
+
+  if (!A.socialsDraft) A.socialsDraft = A.content.socials.map(s => ({ ...s }));
+  const list = A.socialsDraft;
+  const options = Object.entries(SOCIAL_PLATFORMS)
+    .map(([id, p]) => [id, p.label]);
+
+  mount.innerHTML = `
+    <div class="soc-list">
+      ${list.length ? list.map((s, i) => {
+        const p = SOCIAL_PLATFORMS[s.platform] || SOCIAL_PLATFORMS.website;
+        return `
+        <div class="soc-row" data-i="${i}">
+          <span class="soc-badge" style="--brand:${escColor(p.color)};--brand-fg:${escColor(p.fg)}"
+                title="${esc(p.label)}">${socialIconSvg(s.platform, 18)}</span>
+          <div class="soc-fields">
+            <select class="a-select soc-platform" data-i="${i}" aria-label="Platform">
+              ${options.map(([id, label]) =>
+                `<option value="${esc(id)}"${id === s.platform ? " selected" : ""}>${esc(label)}</option>`).join("")}
+            </select>
+            <input class="a-input soc-url" data-i="${i}" type="url" inputmode="url"
+                   value="${esc(s.url)}" placeholder="Paste the profile link" aria-label="${esc(p.label)} link">
+          </div>
+          <div class="soc-actions">
+            <button type="button" class="prod-icon-btn" data-up="${i}" aria-label="Move up"${i === 0 ? " disabled" : ""}>↑</button>
+            <button type="button" class="prod-icon-btn" data-down="${i}" aria-label="Move down"${i === list.length - 1 ? " disabled" : ""}>↓</button>
+            <a class="prod-icon-btn" href="${escUrl(safeSocialHref(s.url))}" target="_blank" rel="noopener"
+               aria-label="Open link" title="Open link">↗</a>
+            <button type="button" class="prod-icon-btn danger" data-remove-soc="${i}" aria-label="Remove">✕</button>
+          </div>
+        </div>`;
+      }).join("") : `<p class="hint" style="padding:6px 0 12px">No social links. The icons are hidden on the site until you add one.</p>`}
+    </div>
+
+    <button type="button" class="a-btn a-btn-ghost a-btn-full" id="soc-add">+ Add a link</button>
+
+    <div class="soc-preview">
+      <span>On the site</span>
+      <div class="soc-preview-row">
+        ${list.filter(s => safeSocialHref(cleanSocialUrl(s.url))).map(s => {
+          const p = SOCIAL_PLATFORMS[s.platform] || SOCIAL_PLATFORMS.website;
+          return `<span class="soc-badge" style="--brand:${escColor(p.color)};--brand-fg:${escColor(p.fg)}" title="${esc(p.label)}">${socialIconSvg(s.platform, 16)}</span>`;
+        }).join("") || `<em>nothing yet</em>`}
+      </div>
+    </div>
+
+    <div class="a-error" id="soc-error" hidden></div>
+    <button type="button" class="a-btn a-btn-primary a-btn-full" id="soc-save">Save &amp; publish</button>`;
+
+  bindSocialsEditor();
+}
+
+function bindSocialsEditor() {
+  const list = A.socialsDraft;
+
+  // Editing a field updates only its own row. Re-rendering the whole card
+  // here would replace the Save button mid-tap when the field loses focus,
+  // swallowing the first click on Save.
+  document.querySelectorAll(".soc-url").forEach(input => {
+    input.addEventListener("change", () => {
+      const i = Number(input.dataset.i);
+      const cleaned = cleanSocialUrl(input.value);
+      list[i].url = cleaned || input.value.trim();
+      if (cleaned) {
+        list[i].platform = detectSocialPlatform(cleaned);
+        input.value = cleaned;
+      }
+      refreshSocialRow(input.closest(".soc-row"), list[i]);
+    });
+  });
+
+  document.querySelectorAll(".soc-platform").forEach(sel =>
+    sel.addEventListener("change", () => {
+      const i = Number(sel.dataset.i);
+      list[i].platform = sel.value;
+      refreshSocialRow(sel.closest(".soc-row"), list[i]);
+    }));
+
+  const move = (i, d) => {
+    const j = i + d;
+    if (j < 0 || j >= list.length) return;
+    [list[i], list[j]] = [list[j], list[i]];
+    renderSocialsEditor();
+  };
+  document.querySelectorAll("[data-up]").forEach(b => b.addEventListener("click", () => move(Number(b.dataset.up), -1)));
+  document.querySelectorAll("[data-down]").forEach(b => b.addEventListener("click", () => move(Number(b.dataset.down), 1)));
+  document.querySelectorAll("[data-remove-soc]").forEach(b => b.addEventListener("click", () => {
+    list.splice(Number(b.dataset.removeSoc), 1);
+    renderSocialsEditor();
+  }));
+
+  document.getElementById("soc-add").addEventListener("click", () => {
+    if (list.length >= 20) return toast("That's plenty — 20 links at most.");
+    list.push({ platform: "instagram", url: "" });
+    renderSocialsEditor();
+    const inputs = document.querySelectorAll(".soc-url");
+    inputs[inputs.length - 1]?.focus();
+  });
+
+  document.getElementById("soc-save").addEventListener("click", saveSocials);
+}
+
+function refreshSocialRow(row, item) {
+  if (!row) return;
+  const p = SOCIAL_PLATFORMS[item.platform] || SOCIAL_PLATFORMS.website;
+  const badge = row.querySelector(".soc-badge");
+  badge.style.setProperty("--brand", escColor(p.color));
+  badge.style.setProperty("--brand-fg", escColor(p.fg));
+  badge.title = p.label;
+  badge.innerHTML = socialIconSvg(item.platform, 18);
+  row.querySelector(".soc-platform").value = item.platform;
+  row.querySelector(".soc-url").setAttribute("aria-label", p.label + " link");
+  const open = row.querySelector("a.prod-icon-btn");
+  if (open) open.href = safeSocialHref(item.url) || "#";
+
+  const preview = document.querySelector(".soc-preview-row");
+  if (preview) {
+    preview.innerHTML = A.socialsDraft.filter(s => safeSocialHref(cleanSocialUrl(s.url))).map(s => {
+      const q = SOCIAL_PLATFORMS[s.platform] || SOCIAL_PLATFORMS.website;
+      return `<span class="soc-badge" style="--brand:${escColor(q.color)};--brand-fg:${escColor(q.fg)}" title="${esc(q.label)}">${socialIconSvg(s.platform, 16)}</span>`;
+    }).join("") || `<em>nothing yet</em>`;
+  }
+}
+
+async function saveSocials() {
+  const box = document.getElementById("soc-error");
+  const btn = document.getElementById("soc-save");
+  box.hidden = true;
+
+  // Read anything typed but not yet committed with a change event.
+  document.querySelectorAll(".soc-url").forEach(input => {
+    A.socialsDraft[Number(input.dataset.i)].url = input.value.trim();
+  });
+
+  const cleaned = [];
+  for (const [n, s] of A.socialsDraft.entries()) {
+    if (!s.url) continue;                         // empty rows are simply dropped
+    const url = cleanSocialUrl(s.url);
+    if (!safeSocialHref(url)) {
+      box.hidden = false;
+      box.textContent = `Link ${n + 1} is not a valid web address. It should start with https://`;
+      return;
+    }
+    cleaned.push({ platform: SOCIAL_PLATFORMS[s.platform] ? s.platform : detectSocialPlatform(url), url });
+  }
+
+  btn.disabled = true; btn.textContent = "Saving…";
+  const res = await dbSaveContent({ ...A.content, socials: cleaned });
+  btn.disabled = false; btn.textContent = "Save & publish";
+
+  if (!res.ok) { box.hidden = false; box.textContent = "Could not save: " + res.message; return; }
+  A.content.socials = cleaned;
+  A.socialsDraft = cleaned.map(s => ({ ...s }));
+  renderSocialsEditor();
+  toast(`${cleaned.length} social link${cleaned.length === 1 ? "" : "s"} live on the site`);
 }

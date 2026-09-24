@@ -118,6 +118,40 @@ function productCardHtml(p) {
   </article>`;
 }
 
+/* ── Social icons ──────────────────────────────────────────────────────
+   The list comes from Admin -> More -> Social links. Until the database has
+   answered (or if migration 007 has not been run) the built-in list shows. */
+function currentSocials() {
+  if (typeof SOCIAL_PLATFORMS === "undefined") return [];
+  const list = (typeof SITE_CONTENT !== "undefined" && SITE_CONTENT && Array.isArray(SITE_CONTENT.socials))
+    ? SITE_CONTENT.socials
+    : DEFAULT_SOCIALS;
+  return list.filter(s => s && SOCIAL_PLATFORMS[s.platform] && safeSocialHref(s.url));
+}
+
+function renderSocials() {
+  const boxes = document.querySelectorAll("[data-socials]");
+  if (!boxes.length) return;
+  const list = currentSocials();
+
+  boxes.forEach(box => {
+    const labelled = box.dataset.socials === "labelled";
+    box.innerHTML = list.map(s => {
+      const p = SOCIAL_PLATFORMS[s.platform];
+      const href = safeSocialHref(s.url);
+      const external = !/^mailto:/i.test(href);
+      return `<a class="social-link${labelled ? " labelled" : ""}" href="${esc(href)}"
+                 ${external ? 'target="_blank" rel="noopener me"' : ""}
+                 aria-label="Dakar Dapper on ${esc(p.label)}" title="${esc(p.label)}"
+                 style="--brand:${escColor(p.color)};--brand-fg:${escColor(p.fg)}">
+                ${socialIconSvg(s.platform, labelled ? 22 : 18)}
+                ${labelled ? `<span>${esc(p.label)}</span>` : ""}
+              </a>`;
+    }).join("");
+    box.hidden = !list.length;
+  });
+}
+
 function readJSON(key, fallback) {
   try {
     const v = JSON.parse(localStorage.getItem(key) || "null");
@@ -1422,22 +1456,29 @@ function hydratePageContent() {
   const yearEl = document.getElementById("footer-year");
   if (yearEl) yearEl.textContent = new Date().getFullYear();
 
-  // Social + contact links, all managed from the admin
-  const social = {
-    instagram: c.instagramUrl,
-    twitter: c.twitterUrl,
-    email: c.emailAddress ? "mailto:" + c.emailAddress : ""
-  };
-  document.querySelectorAll("[data-social]").forEach(a => {
-    const href = social[a.dataset.social];
-    if (href) {
-      a.href = href;
-      if (a.dataset.social !== "email") a.target = "_blank";
+  // Email link(s): shown only once an address is set in the admin
+  const email = String(c.emailAddress || "").trim();
+  document.querySelectorAll('[data-social="email"]').forEach(a => {
+    if (email) {
+      a.href = "mailto:" + email;
+      if (!a.textContent.trim()) a.textContent = email;
       a.style.display = "";
     } else {
       a.style.display = "none";
     }
   });
+  document.querySelectorAll('[data-contact-row="email"]').forEach(li => { li.hidden = !email; });
+
+  // WhatsApp and phone follow the number set in the admin
+  document.querySelectorAll('[data-contact="whatsapp"]').forEach(a => {
+    a.href = `https://wa.me/${PHONE}?text=${encodeURIComponent("Hello Dakar Dapper")}`;
+  });
+  document.querySelectorAll('[data-contact="phone"]').forEach(a => { a.href = "tel:+" + PHONE; });
+  document.querySelectorAll('[data-contact-text="phone"]').forEach(el => {
+    el.textContent = PHONE_DISPLAY || PHONE;
+  });
+
+  renderSocials();
 
   // Free-shipping copy follows the threshold the owner set
   document.querySelectorAll("[data-free-ship]").forEach(el => {

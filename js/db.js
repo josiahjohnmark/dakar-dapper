@@ -109,7 +109,9 @@ function mapDbToContent(d) {
     instagramUrl: d.instagram_url || "", twitterUrl: d.twitter_url || "",
     emailAddress: d.email_address || "",
     freeShipMin: Number(d.free_ship_min) || 150000,
-    popupDelaySec: d.popup_delay_sec || 30
+    popupDelaySec: d.popup_delay_sec || 30,
+    // undefined (not []) when migration 007 has not run, so saves skip it
+    socials: Array.isArray(d.socials) ? d.socials : undefined
   };
 }
 
@@ -422,7 +424,8 @@ async function dbSaveContent(c) {
     phone: c.phone, phone_display: c.phoneDisplay,
     instagram_url: c.instagramUrl, twitter_url: c.twitterUrl,
     email_address: c.emailAddress,
-    free_ship_min: c.freeShipMin, popup_delay_sec: c.popupDelaySec
+    free_ship_min: c.freeShipMin, popup_delay_sec: c.popupDelaySec,
+    ...(Array.isArray(c.socials) ? { socials: c.socials } : {})
   }, { onConflict: "id" });
   if (error) return { ok: false, message: error.message };
   dbLog("content.save", "content", "main");

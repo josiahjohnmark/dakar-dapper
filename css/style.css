@@ -1828,3 +1828,99 @@ ul{list-style:none}
 }
 .optin input { width: 20px; height: 20px; margin-top: 1px; flex-shrink: 0; accent-color: var(--bg-dark); }
 .optin small { display: block; color: var(--text-faint); font-size: .76rem; margin-top: 2px; }
+
+/* ==========================================================================
+   SOCIAL ICONS & CONTACT
+   Icons sit in the site's neutral palette and take their real brand colour
+   on hover or focus (--brand / --brand-fg come from js/socials.js).
+   ========================================================================== */
+
+.social-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.social-row[hidden], .social-grid[hidden] { display: none; }
+
+.social-link {
+  width: 40px; height: 40px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--text); background: var(--bg-white);
+  border: 1px solid var(--border);
+  transition: background .2s, color .2s, border-color .2s, transform .15s;
+  text-decoration: none;
+}
+.social-link:hover,
+.social-link:focus-visible {
+  background: var(--brand); color: var(--brand-fg); border-color: var(--brand);
+  transform: translateY(-2px);
+}
+.social-link svg { flex-shrink: 0; }
+
+/* Footer: light icons on the near-black footer */
+.footer .social-row { margin-bottom: 12px; }
+.footer .social-link {
+  display: inline-flex; padding: 0;
+  color: #d8d4cc; background: #151515; border-color: #262626;
+}
+.footer .social-link:hover,
+.footer .social-link:focus-visible { color: var(--brand-fg); background: var(--brand); border-color: var(--brand); }
+
+/* Mobile menu */
+.mobile-drawer-foot .social-row { margin-bottom: 12px; }
+
+/* ── Contact section (homepage) ──────────────────────────────────────── */
+.contact { padding: 72px 0; scroll-margin-top: 70px; }
+.contact-card {
+  display: grid; gap: 32px;
+  background: var(--bg-white); border: 1px solid var(--border);
+  border-radius: var(--r-lg); padding: 36px 30px;
+}
+.contact-kicker {
+  font-size: .72rem; font-weight: 700; letter-spacing: .2em;
+  text-transform: uppercase; color: var(--gold);
+}
+.contact-intro h2 { font-size: clamp(1.9rem, 5vw, 2.6rem); line-height: 1.1; margin: 8px 0 10px; }
+.contact-intro > p { color: var(--text-sub); line-height: 1.7; max-width: 44ch; margin-bottom: 22px; }
+.contact-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 22px; }
+.contact-actions .btn { min-height: 48px; display: inline-flex; align-items: center; gap: 9px; }
+.contact-wa { background: #128C4B; border-color: #128C4B; }
+.contact-wa:hover { background: #0e7a41; }
+.contact-facts { list-style: none; padding: 0; display: grid; gap: 8px; font-size: .88rem; color: var(--text-sub); }
+.contact-facts strong {
+  display: inline-block; min-width: 76px; color: var(--text);
+  font-size: .72rem; letter-spacing: .1em; text-transform: uppercase;
+}
+.contact-facts a { color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
+.contact-facts [hidden] { display: none; }
+
+.contact-social h3 { font-family: var(--font-serif); font-size: 1.45rem; font-weight: 600; margin-bottom: 4px; }
+.contact-social > p { font-size: .86rem; color: var(--text-sub); margin-bottom: 16px; }
+
+.social-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.social-link.labelled {
+  width: auto; height: auto; min-height: 52px; border-radius: var(--r-md);
+  justify-content: flex-start; gap: 12px; padding: 12px 16px;
+  font-size: .9rem; font-weight: 600;
+}
+.social-link.labelled svg { color: var(--brand); transition: color .2s; }
+.social-link.labelled:hover svg,
+.social-link.labelled:focus-visible svg { color: var(--brand-fg); }
+/* Black marks (TikTok, X, Threads) need to stay visible before hover */
+.social-link.labelled[style*="#000000"] svg { color: var(--text); }
+.social-link.labelled[style*="#FFFC00"] svg { color: #1A1A1A; }
+.social-link.labelled span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+@media (min-width: 860px) {
+  .contact-card { grid-template-columns: 1.1fr 1fr; gap: 48px; padding: 48px; align-items: center; }
+}
+@media (max-width: 380px) {
+  .social-grid { grid-template-columns: 1fr; }
+  .contact-card { padding: 28px 20px; }
+  .contact-actions .btn { width: 100%; justify-content: center; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .social-link { transition: none; }
+  .social-link:hover { transform: none; }
+}
+
+/* Footer: six icons fit on one line in the Connect column */
+.footer .social-row { gap: 6px; }
+.footer .social-link { width: 34px; height: 34px; }
+.footer .social-link svg { width: 16px; height: 16px; }
