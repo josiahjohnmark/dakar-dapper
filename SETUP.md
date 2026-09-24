@@ -93,6 +93,8 @@ Same place: **SQL Editor → New query → paste → Run**, one at a time.
 - `supabase/002_product_pages.sql` — product URL slugs and photo galleries.
 - `supabase/003_reviews_alerts_sizes.sql` — reviews, restock alerts, size
   charts, and the order email queue.
+- `supabase/004_categories_marketing.sql` — the ten new categories and their
+  size charts, marketing consent, the Audience list, campaigns and unsubscribe.
 
 **003 also deletes the invented ratings** the first build shipped (every
 product showed something like "4.9 · 38 reviews" that nobody wrote). After it
@@ -161,6 +163,25 @@ Nothing to configure; both are live once 003 has run.
 - **Restock alerts** — a sold-out product shows a "Tell me when it is back"
   form. The waiting list appears at the bottom of **Admin → Reviews**. Restock
   the product and an **Email them** button appears; one tap queues the emails.
+
+---
+
+## Email marketing, in short
+
+**Admin → Customers → Audience** lists everyone who joined the newsletter or
+bought something, and shows what they bought. Pick a filter or a *Smart
+audience*, tap **Email this audience**, write the email or pick a template, send
+yourself a test, then send.
+
+Only people marked **Can email** receive campaigns: newsletter signups, and
+buyers who ticked the box at checkout. Buying alone is not consent to marketing
+under the NDPA, so the system will not email those buyers however you filter.
+Every campaign email has its own unsubscribe link.
+
+Campaigns go out through the same `send-emails` function as order
+confirmations (Step 6), so that has to be deployed first. Order confirmations
+always go before campaign mail. Resend's free plan sends 100 emails a day; move
+to a paid plan once your list is bigger than that.
 
 ---
 
