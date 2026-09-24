@@ -95,6 +95,8 @@ Same place: **SQL Editor → New query → paste → Run**, one at a time.
   charts, and the order email queue.
 - `supabase/004_categories_marketing.sql` — the ten new categories and their
   size charts, marketing consent, the Audience list, campaigns and unsubscribe.
+- `supabase/005_fix_ratings.sql` — clears the made-up 5-star ratings saved by
+  the old admin. Safe to run any time.
 
 **003 also deletes the invented ratings** the first build shipped (every
 product showed something like "4.9 · 38 reviews" that nobody wrote). After it
@@ -102,53 +104,56 @@ runs, products show *"Be the first to review"* until real customers write one.
 
 ---
 
-## Step 6 — Turn on order confirmation emails
+## Step 6 — Turn on emails (order confirmations and campaigns)
 
-Every order already queues a confirmation. This deploys the thing that sends it.
+Every order already puts a confirmation email in a queue. This step deploys
+the small program that actually sends what is in that queue. Everything is
+done in your browser; no command line needed.
 
-**1. Get a sender.** Sign up at [resend.com](https://resend.com) (free tier covers
-3,000 emails a month). To send from your own address you must verify a domain —
-until you own one, use their `onboarding@resend.dev` sender, which only delivers
-to the address you signed up with. Good enough to test; swap it when your domain
-is live.
+**A. Get an email sender (Resend)**
 
-**2. Install the Supabase CLI and deploy:**
+1. Sign up at [resend.com](https://resend.com) (free: 100 emails a day).
+2. **Domains → Add domain →** `dakardapper.com`. Resend shows a few DNS
+   records. Add them where you manage your domain's DNS (Vercel → your
+   project → Domains, or your registrar). Wait until Resend says **Verified**.
+3. **API Keys → Create API key** (Sending access). Copy it; it starts with `re_`.
 
-```bash
-npm install -g supabase
-supabase login
-supabase link --project-ref cqcyxiqsxcuqikvbkcrs
-supabase functions deploy send-emails
-```
+**B. Deploy the sender**
 
-**3. Set the secrets** (these never reach the browser):
+1. Supabase dashboard → **Edge Functions → Deploy a new function → Via Editor**.
+2. Name it exactly `send-emails`.
+3. Delete the sample code, then paste **all** of
+   `supabase/functions/send-emails/index.ts` from this project.
+4. Click **Deploy**.
 
-```bash
-supabase secrets set RESEND_API_KEY=re_your_key_here
-supabase secrets set FROM_EMAIL="Dakar Dapper <onboarding@resend.dev>"
-supabase secrets set STORE_URL="https://www.dakardapper.com"
-supabase secrets set WHATSAPP_NUMBER="2349019603621"
-```
+**C. Give it its settings**
 
-**4. Run it every minute.** Supabase dashboard → **Integrations → Cron** → new job:
+Supabase dashboard → **Edge Functions → Secrets** (or Project Settings →
+Edge Functions → Secrets). Add these four:
 
-```sql
-select net.http_post(
-  url     := 'https://cqcyxiqsxcuqikvbkcrs.supabase.co/functions/v1/send-emails',
-  headers := '{"Authorization":"Bearer YOUR_SERVICE_ROLE_KEY","Content-Type":"application/json"}'::jsonb
-);
-```
+| Name | Value |
+|---|---|
+| `RESEND_API_KEY` | the `re_...` key from A3 |
+| `FROM_EMAIL` | `Dakar Dapper <orders@dakardapper.com>` |
+| `STORE_URL` | `https://www.dakardapper.com` |
+| `WHATSAPP_NUMBER` | `2349019603621` |
 
-Your service role key is in **Settings → API**. It belongs only here and in the
-Supabase dashboard — never in any file in this project.
+Supabase provides the database address and service key to the function
+itself; you do not add those.
 
-**5. Check it.** Place a test order, then look at **Admin → More → Order emails**.
-You want *Waiting: 0, Sent: 1*. If messages pile up in Waiting, the function is
-not deployed or the cron job is not firing.
+**D. Run it every minute**
 
-> Confirmations go to whatever address the customer typed at checkout. For a
-> signed-in customer that address is already verified by Supabase Auth, so those
-> are the most reliable.
+SQL Editor → paste and run **`supabase/006_email_schedule.sql`**.
+
+**E. Check it works**
+
+Place a small test order on the site with your own email. Within a couple
+of minutes you should get the confirmation, and **Admin → More → Order
+emails** should show *Sent: 1, Waiting: 0*. If it stays in *Waiting*, the
+function or the schedule is not running; if it shows *Failed*, the Resend
+key or domain is not set up yet.
+
+> Confirmations go to whatever address the customer typed at checkout.
 
 ---
 
