@@ -596,7 +596,7 @@ function openProduct(id) {
     <div class="reassure">
       <div class="reassure-row"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><div><strong>Secure Checkout</strong><span>SSL encrypted payment</span></div></div>
       <div class="reassure-row"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 17H5a2 2 0 0 0-2 2 2 2 0 0 0 2 2h14a2 2 0 0 0 2-2 2 2 0 0 0-2-2h-4M9 17V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v12M9 17h6"/></svg><div><strong>Free Shipping</strong><span>On orders over ₦150,000</span></div></div>
-      <div class="reassure-row"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg><div><strong>Easy Returns</strong><span>14-day hassle-free returns</span></div></div>
+      <div class="reassure-row"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg><div><strong>7-Day Returns</strong><span>Untampered goods · Client logistics</span></div></div>
     </div>
   `;
 
@@ -611,7 +611,7 @@ function openProduct(id) {
       <ul class="detail-list">${(p.details||[]).map(d => `<li><span class="check">✓</span>${esc(d)}</li>`).join("")}</ul>
     </div>
     <div class="tab-pane" id="tab-care"><p style="font-size:.9rem;color:var(--text-sub);line-height:1.6">${esc(p.care)}</p></div>
-    <div class="tab-pane" id="tab-shipping"><p style="font-size:.9rem;color:var(--text-sub);line-height:1.6">Free standard shipping on orders over ₦150,000. Standard delivery takes 3-5 business days within Lagos and 5-7 days nationwide. Express delivery available at checkout. All orders are tracked and insured.</p></div>
+    <div class="tab-pane" id="tab-shipping"><p style="font-size:.9rem;color:var(--text-sub);line-height:1.6">Free standard shipping on orders over ₦150,000. Delivery takes 1-2 business days in Lagos and 3-7 days nationwide. Returns accepted within 7 days of delivery for untampered items in original condition (client covers return logistics). All orders are tracked.</p></div>
   `;
 
   // Related
@@ -897,7 +897,7 @@ function openCheckout() {
 
       <div class="checkout-error" id="checkout-error" role="alert" hidden></div>
       <button class="btn btn-dark buy-full" type="submit" id="place-order-btn">Place Order</button>
-      <p class="checkout-trust">Your details are sent over an encrypted connection.</p>
+      <p class="checkout-trust">Your details are sent over an encrypted connection &middot; 7-day untampered returns policy (client covers logistics).</p>
     </form>`;
 
   document.getElementById("checkout-form").addEventListener("submit", placeOrder);

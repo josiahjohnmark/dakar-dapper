@@ -191,7 +191,7 @@ function renderPdp(p) {
 
         <div class="pdp-assure">
           <div><strong>Free delivery</strong><span data-free-ship>On qualifying orders</span></div>
-          <div><strong>14-day returns</strong><span>Unworn, tags attached</span></div>
+          <div><strong>7-day returns</strong><span>Untampered · Client logistics</span></div>
           <div><strong>Nationwide</strong><span>All 36 states + FCT</span></div>
         </div>
 
@@ -210,7 +210,8 @@ function renderPdp(p) {
         <details class="pdp-acc">
           <summary>Delivery &amp; returns</summary>
           <p>Delivery is priced by state at checkout — 1–2 working days in Lagos,
-             3–7 days nationwide. Returns accepted within 14 days, unworn with tags.
+             3–7 days nationwide. Returns accepted within 7 days of delivery for untampered items
+             (unworn, original tags attached). Client covers return logistics.
              <a href="/shipping.html">Full policy</a>.</p>
         </details>
       </div>

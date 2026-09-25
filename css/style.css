@@ -1932,6 +1932,39 @@ ul{list-style:none}
 .footer-manage { color: #8C8C8C; }
 .footer-manage:hover { color: var(--gold); }
 
+/* ── Footer address ─────────────────────────────────────────────────── */
+.footer-address {
+  margin-top: 14px;
+  font-size: .86rem;
+  line-height: 1.5;
+  color: var(--text-sub);
+}
+.footer-address-loc {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin-bottom: 6px;
+}
+.footer-address-loc svg {
+  flex-shrink: 0;
+  margin-top: 3px;
+  color: var(--gold-text);
+}
+.footer-address a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: .82rem;
+  font-weight: 600;
+  color: var(--gold-text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color .2s;
+}
+.footer-address a:hover {
+  color: var(--gold);
+}
+
 /* ── Header search panel ───────────────────────────────────────────────── */
 .search-tags { display: block; margin-top: 14px; max-height: min(60dvh, 520px); overflow-y: auto; }
 .search-results { list-style: none; padding: 0; margin: 0 0 6px; }
