@@ -1080,7 +1080,72 @@ ul{list-style:none}
   line-height: 1.2;
   margin-bottom: 3px;
 }
-.checkout-sub { font-size: .85rem; color: var(--text-sub); margin-bottom: 18px; }
+.checkout-sub { font-size: .85rem; color: var(--text-sub); margin-bottom: 14px; }
+
+/* ── Checkout Return Policy Banner (Top of Checkout) ─────────────────── */
+.checkout-policy-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  background: rgba(184, 150, 90, 0.08);
+  border: 1px solid rgba(184, 150, 90, 0.28);
+  border-left: 3px solid var(--gold);
+  border-radius: var(--r-sm);
+  padding: 10px 14px;
+  margin-bottom: 16px;
+}
+.checkout-policy-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: .78rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--gold-text);
+}
+.checkout-policy-head svg {
+  flex-shrink: 0;
+  color: var(--gold-text);
+}
+.checkout-policy-desc {
+  font-size: .82rem;
+  line-height: 1.5;
+  color: var(--text);
+  margin: 0;
+}
+.checkout-policy-desc a {
+  color: var(--gold-text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  font-weight: 600;
+  margin-left: 4px;
+}
+.checkout-policy-desc a:hover {
+  color: var(--gold);
+}
+
+/* ── Cart Drawer Return Policy Notice ────────────────────────────────── */
+.cart-policy-notice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(184, 150, 90, 0.07);
+  border: 1px solid rgba(184, 150, 90, 0.2);
+  border-radius: var(--r-xs);
+  padding: 7px 11px;
+  margin: 10px 0 12px;
+  font-size: .77rem;
+  line-height: 1.4;
+  color: var(--text-sub);
+}
+.cart-policy-notice svg {
+  flex-shrink: 0;
+  color: var(--gold-text);
+}
+.cart-policy-notice strong {
+  color: var(--text);
+}
 
 .form-grid { display: flex; flex-direction: column; gap: 13px; }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }

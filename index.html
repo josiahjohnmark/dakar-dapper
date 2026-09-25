@@ -308,7 +308,14 @@
   <div class="drawer-head"><h3>Shopping Bag</h3><button class="drawer-close" id="cart-close">✕</button></div>
   <div class="ship-meter" id="ship-meter"><span id="ship-msg">Add ₦150,000 for free shipping</span><div class="ship-bar"><div class="ship-fill" id="ship-fill"></div></div></div>
   <div class="drawer-body" id="cart-items"><div class="empty-state"><h3>Your bag is empty</h3><p>Explore our collection and find something you love.</p><button class="btn btn-dark" onclick="closeAllDrawers();scrollToSection('collection')">Browse Collection</button></div></div>
-  <div class="drawer-foot" id="cart-footer" style="display:none"><div class="subtotal-row"><span>Subtotal</span><span id="cart-total">₦0</span></div><button class="btn btn-dark buy-full" id="checkout-btn">Checkout</button></div>
+  <div class="drawer-foot" id="cart-footer" style="display:none">
+    <div class="subtotal-row"><span>Subtotal</span><span id="cart-total">₦0</span></div>
+    <div class="cart-policy-notice">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      <span><strong>7-Day Returns:</strong> Untampered goods &middot; Client covers logistics</span>
+    </div>
+    <button class="btn btn-dark buy-full" id="checkout-btn">Checkout</button>
+  </div>
 </div>
 
 <!-- ═══ Wishlist Drawer ═══ -->

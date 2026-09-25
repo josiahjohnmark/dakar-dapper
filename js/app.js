@@ -837,6 +837,15 @@ function openCheckout() {
   document.getElementById("checkout-content").innerHTML = `
     <h2 class="checkout-heading">Checkout</h2>
     <p class="checkout-sub">Delivery details &mdash; we will confirm your order on WhatsApp.</p>
+    <div class="checkout-policy-banner">
+      <div class="checkout-policy-head">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <span>7-Day Return Policy</span>
+      </div>
+      <p class="checkout-policy-desc">
+        Goods can be returned within <strong>7 days of delivery</strong> provided they are <strong>untampered</strong> (unworn, original tags intact). The client covers return logistics. <a href="shipping.html" target="_blank" rel="noopener">Read policy &rarr;</a>
+      </p>
+    </div>
     <form class="form-grid" id="checkout-form" novalidate autocomplete="on">
       <div class="form-row">
         <div class="form-grp">
