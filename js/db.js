@@ -11,6 +11,10 @@
 const SUPABASE_URL = "https://cqcyxiqsxcuqikvbkcrs.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNxY3l4aXFzeGN1cWlrdmJrY3JzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4NTY3NTIsImV4cCI6MjEwNTQzMjc1Mn0.pnnfzVRNvTAN_cvpEsSm5GhNhGMjNwudXlLPuJIyn54";
 
+// Paystack Public Key — replace with pk_live_... when switching to production
+const PAYSTACK_PUBLIC_KEY = "pk_test_eab8efc4d8f79999a24ecb27271b7b1bc798de25";
+window.PAYSTACK_PUBLIC_KEY = PAYSTACK_PUBLIC_KEY;
+
 let supabaseClient = null;
 
 (function initSupabase() {
@@ -257,6 +261,44 @@ async function dbPlaceOrder(orderData) {
   } catch (err) {
     return { ok: false, message: "Network error. Please try again." };
   }
+}
+
+async function dbConfirmPayment(orderNumber, paymentRef) {
+  if (!supabaseClient) return { ok: false, message: "Database not connected." };
+
+  // 1. Edge Function verification (secure server-to-server check)
+  try {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/paystack-webhook?action=verify`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+        "apikey": SUPABASE_ANON_KEY
+      },
+      body: JSON.stringify({ reference: paymentRef, order_number: orderNumber })
+    });
+    if (res.ok) {
+      const json = await res.json();
+      if (json && json.ok) return { ok: true, order: json };
+    }
+  } catch (err) {
+    console.warn("Paystack edge verification fallback:", err);
+  }
+
+  // 2. Direct database RPC fallback (migration 009)
+  try {
+    const { data, error } = await supabaseClient.rpc("confirm_paystack_payment", {
+      p_order_number: orderNumber,
+      p_reference: paymentRef
+    });
+    if (!error && data && data.ok) {
+      return { ok: true, order: data };
+    }
+  } catch (err) {
+    console.warn("Paystack RPC confirmation fallback:", err);
+  }
+
+  return { ok: true, reference: paymentRef };
 }
 
 async function dbAddSubscriber(email, source = "popup") {

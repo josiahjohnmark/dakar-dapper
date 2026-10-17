@@ -299,6 +299,9 @@ function orderCard(o, compact) {
           <div class="total"><dt>Total</dt><dd>${formatPrice(o.total)}</dd></div>
         </dl>
         <div class="acc-order-actions">
+          ${o.payment_status === "unpaid" && o.status !== "cancelled"
+            ? `<button class="btn btn-gold btn-sm" data-pay-order="${esc(o.order_number)}">Pay Now</button>`
+            : ""}
           <a class="btn btn-outline btn-sm" href="${esc(help)}" target="_blank" rel="noopener">Ask about this order</a>
           <button class="btn btn-dark btn-sm" data-reorder="${esc(o.order_number)}">Buy again</button>
         </div>`}
@@ -525,6 +528,7 @@ const bindPanel = {
       again.focus(); again.setSelectionRange(pos, pos);
     }, 250));
     document.querySelectorAll("[data-reorder]").forEach(b => b.onclick = () => buyAgain(b.dataset.reorder));
+    document.querySelectorAll("[data-pay-order]").forEach(b => b.onclick = () => payOrderFromAccount(b.dataset.payOrder));
   },
 
   payments() {
@@ -653,4 +657,44 @@ function buyAgain(ref) {
   });
   if (added) openDrawer("cart-drawer");
   showToast(missing ? `${added} added to your bag; ${missing} no longer available` : "Added to your bag");
+}
+
+async function payOrderFromAccount(ref) {
+  const o = ACC.data.orders.find(x => x.order_number === ref);
+  if (!o) return;
+  const pop = (typeof ensurePaystackLoaded === "function")
+    ? await ensurePaystackLoaded()
+    : (window.PaystackPop || null);
+
+  if (!pop || typeof pop.setup !== "function") {
+    showToast("Paystack payment could not load. Please check if an ad blocker is enabled, or confirm on WhatsApp.");
+    return;
+  }
+  const email = (ACC.user && ACC.user.email) || o.customer_email || "";
+  const key = (typeof PAYSTACK_PUBLIC_KEY !== "undefined" && PAYSTACK_PUBLIC_KEY)
+    ? PAYSTACK_PUBLIC_KEY
+    : "pk_test_eab8efc4d8f79999a24ecb27271b7b1bc798de25";
+
+  const handler = pop.setup({
+    key: key,
+    email: email,
+    amount: Math.round(Number(o.total) * 100),
+    currency: "NGN",
+    ref: o.order_number + "-" + Math.floor(Math.random() * 10000),
+    metadata: {
+      order_number: o.order_number
+    },
+    callback: function(response) {
+      showToast("Payment received! Confirming...");
+      const payRef = response.reference || o.order_number;
+      if (typeof dbConfirmPayment === "function") {
+        dbConfirmPayment(o.order_number, payRef);
+      }
+      o.payment_status = "paid";
+      o.status = "confirmed";
+      renderPanel();
+      showToast("Order " + o.order_number + " confirmed & paid!");
+    }
+  });
+  handler.openIframe();
 }

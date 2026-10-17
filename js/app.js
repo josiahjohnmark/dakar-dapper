@@ -905,12 +905,24 @@ function openCheckout() {
       </div>
 
       <div class="checkout-error" id="checkout-error" role="alert" hidden></div>
-      <button class="btn btn-dark buy-full" type="submit" id="place-order-btn">Place Order</button>
-      <p class="checkout-trust">Your details are sent over an encrypted connection &middot; 7-day untampered returns policy (client covers logistics).</p>
+      <button class="btn btn-dark buy-full" type="submit" id="place-order-btn">Pay with Paystack</button>
+      <div style="text-align:center;margin-top:8px;">
+        <button type="button" id="co-alt-whatsapp-btn" style="background:none;border:none;color:var(--text-sub);font-size:.78rem;cursor:pointer;text-decoration:underline;padding:4px;">Prefer to pay via WhatsApp transfer? Click here</button>
+      </div>
+      <p class="checkout-trust">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="display:inline-block;vertical-align:middle;margin-right:4px;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+        Secured by Paystack &middot; Card, Bank Transfer, USSD
+      </p>
     </form>`;
 
   document.getElementById("checkout-form").addEventListener("submit", placeOrder);
   document.getElementById("co-state").addEventListener("change", refreshCheckoutTotals);
+
+  const altWaBtn = document.getElementById("co-alt-whatsapp-btn");
+  if (altWaBtn) {
+    altWaBtn.addEventListener("click", () => placeOrderWhatsApp());
+  }
+
   refreshCheckoutTotals();
 
   document.getElementById("checkout-modal").classList.add("open");
@@ -922,12 +934,18 @@ function refreshCheckoutTotals() {
   if (!stateEl) return;
   const subtotal = cartSubtotal();
   const ship = shippingFor(stateEl.value, subtotal);
+  const total = subtotal + ship;
   const sEl = document.getElementById("co-subtotal");
   const hEl = document.getElementById("co-shipping");
   const tEl = document.getElementById("checkout-total");
+  const btn = document.getElementById("place-order-btn");
   if (sEl) sEl.textContent = formatPrice(subtotal);
   if (hEl) hEl.textContent = ship === 0 ? "FREE" : formatPrice(ship);
-  if (tEl) tEl.textContent = formatPrice(subtotal + ship);
+  if (tEl) tEl.textContent = formatPrice(total);
+
+  if (btn && !btn.disabled) {
+    btn.textContent = `Pay ${formatPrice(total)} with Paystack`;
+  }
 }
 
 function closeCheckout() {
@@ -989,7 +1007,7 @@ async function placeOrder(e) {
 
   errBox.hidden = true;
   btn.disabled = true;
-  btn.textContent = "Placing your order...";
+  btn.textContent = "Connecting to Paystack...";
 
   const result = await dbPlaceOrder({
     name: v.firstName + " " + v.lastName,
@@ -1001,7 +1019,7 @@ async function placeOrder(e) {
 
   if (!result.ok) {
     btn.disabled = false;
-    btn.textContent = "Place Order";
+    refreshCheckoutTotals();
     errBox.hidden = false;
     errBox.textContent = result.message || "We could not place your order. Please try again.";
     errBox.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -1010,6 +1028,250 @@ async function placeOrder(e) {
   }
 
   const o = result.order || {};
+  cart = [];
+  saveCart();
+  renderCart();
+
+  startPaystackPayment(o, v);
+  return false;
+}
+
+async function ensurePaystackLoaded() {
+  if (window.PaystackPop && typeof window.PaystackPop.setup === "function") {
+    return window.PaystackPop;
+  }
+
+  // 1. Wait up to 2 seconds in case head script is downloading
+  for (let i = 0; i < 20; i++) {
+    await new Promise(r => setTimeout(r, 100));
+    if (window.PaystackPop && typeof window.PaystackPop.setup === "function") {
+      return window.PaystackPop;
+    }
+  }
+
+  // 2. Try dynamically injecting the script tag
+  return new Promise(resolve => {
+    const s = document.createElement("script");
+    s.src = "https://js.paystack.co/v1/inline.js";
+    s.async = true;
+    s.onload = () => resolve(window.PaystackPop || null);
+    s.onerror = () => {
+      const alt = document.createElement("script");
+      alt.src = "https://inline-js.paystack.co/v1/inline.js";
+      alt.async = true;
+      alt.onload = () => resolve(window.PaystackPop || null);
+      alt.onerror = () => resolve(null);
+      document.head.appendChild(alt);
+    };
+    document.head.appendChild(s);
+  });
+}
+
+window.ensurePaystackLoaded = ensurePaystackLoaded;
+
+async function startPaystackPayment(o, v) {
+  const btn = document.getElementById("place-order-btn");
+  if (btn) btn.textContent = "Opening Paystack...";
+
+  const pop = await ensurePaystackLoaded();
+
+  if (pop && typeof pop.setup === "function") {
+    const key = (typeof PAYSTACK_PUBLIC_KEY !== "undefined" && PAYSTACK_PUBLIC_KEY)
+      ? PAYSTACK_PUBLIC_KEY
+      : "pk_test_eab8efc4d8f79999a24ecb27271b7b1bc798de25";
+
+    const safetyTimer = setTimeout(() => {
+      const b = document.getElementById("place-order-btn");
+      if (b && b.disabled) {
+        b.disabled = false;
+        refreshCheckoutTotals();
+      }
+    }, 10000);
+
+    try {
+      const handler = pop.setup({
+        key: key,
+        email: v.email,
+        amount: Math.round(Number(o.total) * 100), // Paystack requires KOBO
+        currency: "NGN",
+        ref: o.order_number ? (o.order_number + "-" + Math.floor(Math.random() * 1000)) : undefined,
+        metadata: {
+          order_number: o.order_number,
+          customer_name: `${v.firstName || ""} ${v.lastName || ""}`.trim(),
+          phone: v.phone,
+          custom_fields: [
+            { display_name: "Order Number", variable_name: "order_number", value: o.order_number },
+            { display_name: "Customer Name", variable_name: "customer_name", value: `${v.firstName || ""} ${v.lastName || ""}`.trim() }
+          ]
+        },
+        callback: function(response) {
+          clearTimeout(safetyTimer);
+          showToast("Payment received! Confirming...");
+          const ref = response.reference || o.order_number;
+          if (typeof dbConfirmPayment === "function") {
+            dbConfirmPayment(o.order_number, ref);
+          }
+          showOrderPaidScreen(o, ref);
+        },
+        onClose: function() {
+          clearTimeout(safetyTimer);
+          const b = document.getElementById("place-order-btn");
+          if (b) {
+            b.disabled = false;
+            refreshCheckoutTotals();
+          }
+          showToast("Payment window closed.");
+        }
+      });
+
+      handler.openIframe();
+      return;
+    } catch (err) {
+      clearTimeout(safetyTimer);
+      console.error("Paystack setup error:", err);
+    }
+  }
+
+  // Fallback: If inline popup script was blocked by browser or ad blocker,
+  // try direct hosted Paystack checkout via Edge Function
+  if (btn) btn.textContent = "Redirecting to Paystack...";
+  try {
+    const initRes = await fetch(`${SUPABASE_URL}/functions/v1/paystack-webhook?action=initialize`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+        "apikey": SUPABASE_ANON_KEY
+      },
+      body: JSON.stringify({
+        email: v.email,
+        amount: Math.round(Number(o.total) * 100),
+        order_number: o.order_number,
+        callback_url: `${window.location.origin}/account.html?payment=done`
+      })
+    });
+    const initJson = await initRes.json();
+    if (initJson && initJson.status && initJson.data?.authorization_url) {
+      window.location.href = initJson.data.authorization_url;
+      return;
+    }
+  } catch (err) {
+    console.warn("Hosted checkout redirect fallback:", err);
+  }
+
+  if (btn) {
+    btn.disabled = false;
+    refreshCheckoutTotals();
+  }
+  showToast("Paystack payment could not open. Please check if an ad blocker is blocking Paystack, or confirm on WhatsApp.");
+  showOrderWhatsAppScreen(o);
+}
+
+async function placeOrderWhatsApp() {
+  const val = id => { const el = document.getElementById(id); return el ? el.value.trim() : ""; };
+  const v = {
+    firstName: val("co-first"), lastName: val("co-last"),
+    email: val("co-email"), phone: val("co-phone"),
+    address: val("co-address"), city: val("co-city"),
+    state: val("co-state"), note: val("co-note"),
+    marketing: !!(document.getElementById("co-marketing") || {}).checked
+  };
+
+  const bad = validateCheckout(v);
+  if (bad) {
+    const el = document.getElementById(bad);
+    el.focus();
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    return false;
+  }
+
+  if (!cart.length) { showToast("Your bag is empty."); return false; }
+
+  const btn = document.getElementById("place-order-btn");
+  if (btn) { btn.disabled = true; btn.textContent = "Placing your order..."; }
+
+  const result = await dbPlaceOrder({
+    name: v.firstName + " " + v.lastName,
+    email: v.email, phone: v.phone, address: v.address,
+    city: v.city, state: v.state, note: v.note,
+    marketing: v.marketing,
+    items: cart
+  });
+
+  if (!result.ok) {
+    if (btn) { btn.disabled = false; refreshCheckoutTotals(); }
+    const errBox = document.getElementById("checkout-error");
+    if (errBox) {
+      errBox.hidden = false;
+      errBox.textContent = result.message || "We could not place your order. Please try again.";
+      errBox.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    return false;
+  }
+
+  const o = result.order || {};
+  cart = [];
+  saveCart();
+  renderCart();
+  showOrderWhatsAppScreen(o);
+}
+
+function showOrderPaidScreen(o, ref) {
+  const waText = encodeURIComponent(
+    "Hello Dakar Dapper, I just paid for order " + o.order_number + " via Paystack (Ref: " + (ref || "") + "). Total: " + formatPrice(o.total) + ".");
+
+  document.getElementById("checkout-content").innerHTML = `
+    <div class="order-done">
+      <div class="check-circle" style="background:#10B981;color:#fff;">&#10003;</div>
+      <h2 class="checkout-heading" style="margin-top:10px;">Payment Successful</h2>
+      <p class="order-ref">Your reference<strong>${esc(o.order_number || "")}</strong></p>
+      <div class="order-totals">
+        <div class="sum-row"><span>Subtotal</span><span>${formatPrice(o.subtotal)}</span></div>
+        <div class="sum-row"><span>Delivery</span><span>${Number(o.shipping) === 0 ? "FREE" : formatPrice(o.shipping)}</span></div>
+        <div class="sum-row sum-total"><span>Total Paid</span><span style="color:#10B981;font-weight:700;">${formatPrice(o.total)}</span></div>
+        ${ref ? `<div class="sum-row" style="font-size:0.75rem;color:var(--text-faint);margin-top:4px;"><span>Paystack Ref</span><span>${esc(ref)}</span></div>` : ""}
+      </div>
+      <p class="order-next">Thank you! Your payment is confirmed and your items are secured. We will pack and dispatch your order promptly.</p>
+      <a class="btn btn-gold buy-full" href="https://wa.me/${esc(PHONE)}?text=${waText}" target="_blank" rel="noopener">Notify us on WhatsApp</a>
+      <button class="btn btn-dark buy-full" onclick="handleOrderDoneContinue()" style="margin-top:10px">Continue Shopping</button>
+    </div>`;
+
+  showToast("Order " + o.order_number + " confirmed & paid");
+  if (typeof syncFromSupabase === "function") syncFromSupabase();
+}
+
+function showOrderUnpaidScreen(o, note) {
+  const waText = encodeURIComponent(
+    "Hello Dakar Dapper, I placed order " + o.order_number + " and would like to complete payment. Total: " + formatPrice(o.total) + ".");
+
+  document.getElementById("checkout-content").innerHTML = `
+    <div class="order-done">
+      <div class="check-circle" style="background:#F59E0B;color:#fff;">!</div>
+      <h2 class="checkout-heading" style="margin-top:10px;">Order Reserved</h2>
+      <p class="order-ref">Your reference<strong>${esc(o.order_number || "")}</strong></p>
+      <div class="order-totals">
+        <div class="sum-row"><span>Subtotal</span><span>${formatPrice(o.subtotal)}</span></div>
+        <div class="sum-row"><span>Delivery</span><span>${Number(o.shipping) === 0 ? "FREE" : formatPrice(o.shipping)}</span></div>
+        <div class="sum-row sum-total"><span>Total Due</span><span style="color:#F59E0B;font-weight:700;">${formatPrice(o.total)}</span></div>
+      </div>
+      <p class="order-next">${esc(note || "Your order was reserved, but payment was not completed. You can retry paying online or complete via WhatsApp transfer.")}</p>
+      <button class="btn btn-gold buy-full" id="retry-pay-btn" style="margin-bottom:10px">Retry Paystack Payment</button>
+      <a class="btn btn-outline buy-full" href="https://wa.me/${esc(PHONE)}?text=${waText}" target="_blank" rel="noopener">Pay via WhatsApp Transfer</a>
+      <button class="btn btn-dark buy-full" onclick="handleOrderDoneContinue()" style="margin-top:10px">Continue Shopping</button>
+    </div>`;
+
+  const retryBtn = document.getElementById("retry-pay-btn");
+  if (retryBtn) {
+    retryBtn.addEventListener("click", () => {
+      const customer = readJSON("dd_customer", {});
+      startPaystackPayment(o, customer);
+    });
+  }
+  showToast("Order " + o.order_number + " reserved");
+  if (typeof syncFromSupabase === "function") syncFromSupabase();
+}
+
+function showOrderWhatsAppScreen(o) {
   const waText = encodeURIComponent(
     "Hello Dakar Dapper, I just placed order " + o.order_number + ". Total: " + formatPrice(o.total) + ".");
 
@@ -1028,12 +1290,8 @@ async function placeOrder(e) {
       <button class="btn btn-dark buy-full" onclick="handleOrderDoneContinue()" style="margin-top:10px">Continue Shopping</button>
     </div>`;
 
-  cart = [];
-  saveCart();
-  renderCart();
   showToast("Order " + o.order_number + " placed");
   if (typeof syncFromSupabase === "function") syncFromSupabase();
-  return false;
 }
 
 function handleOrderDoneContinue() {

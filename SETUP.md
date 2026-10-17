@@ -267,33 +267,44 @@ It works the same on your phone as on a laptop.
 Your images are already 83% smaller than they were, so Cloudflare is now a bonus rather
 than a rescue.
 
-### Paystack — when you are ready to take card payments
+### Paystack — online payments (card, bank transfer, USSD)
 
-The groundwork is done: `place_order()` already computes the authoritative total on the
-server, and `dd_orders` already has `payment_status` and `payment_ref` columns. What is
-left is the part that must never live in the browser:
+Paystack is now connected! Customers can pay instantly using the Paystack Inline modal (cards, bank transfer, USSD) or choose to reserve and pay via WhatsApp.
 
-1. Create a **Supabase Edge Function** called `paystack-init`. It reads the order by
-   reference, calls Paystack's initialize endpoint with the total **from the database**,
-   and returns the checkout URL. Your Paystack secret key lives here, never in the page.
-2. Create a second function, `paystack-webhook`, as your Paystack webhook URL. Verify the
-   `x-paystack-signature` header, then set `payment_status = 'paid'` and store the
-   reference.
-3. Only ever trust the webhook. A customer returning to your success page proves nothing.
+**1. Run the database migration**
+In your Supabase project (`cqcyxiqsxcuqikvbkcrs`):
+- Go to **SQL Editor** → Open or paste **`supabase/009_paystack_payments.sql`**.
+- Click **Run**.
 
-Two things that catch people out:
+**2. Add your Secret Key (`sk_test_...` or `sk_live_...`) to Supabase**
+- Go to Supabase dashboard → **Edge Functions** → **Secrets** (or Project Settings → Edge Functions → Secrets).
+- Click **Add new secret**:
+  - Name: `PAYSTACK_SECRET_KEY`
+  - Value: `sk_test_...` (your test key, or `sk_live_...` when live)
+- Click **Save**.
 
-- **Paystack works in kobo.** ₦42,000 is `4200000`. Getting this wrong charges 100× too
-  little or too much.
-- Do not decrement stock on payment — `place_order()` already reserved it atomically when
-  the order was placed.
+**3. Deploy the Edge Function (`paystack-webhook`)**
+Option A — Via Supabase Dashboard:
+- Go to **Edge Functions** → **Deploy a new function** → Via Editor.
+- Name it `paystack-webhook`.
+- Paste the code from `supabase/functions/paystack-webhook/index.ts`.
+- Click **Deploy**.
 
-### Still worth building
+Option B — Via CLI:
+```bash
+supabase functions deploy paystack-webhook
+```
 
-- **Card payments (Paystack)**, above. Until then the account page shows each order's
-  payment status as you set it in the admin.
-- **Categories for tees and jackets.** They currently sit under Casual Shirts; add
-  T-Shirts or Jackets in Admin → Products → Categories if the range grows.
+**4. Set the Webhook URL in Paystack Dashboard**
+- Log into your [Paystack Dashboard](https://dashboard.paystack.co) → **Settings** → **API Keys & Webhooks**.
+- Under **Test Webhook URL** (and **Live Webhook URL**):
+  `https://cqcyxiqsxcuqikvbkcrs.supabase.co/functions/v1/paystack-webhook`
+- Click **Save Changes**.
+
+**5. Switching from Test to Live anytime**
+You can switch anytime in 2 simple steps:
+1. In `js/db.js`, replace `PAYSTACK_PUBLIC_KEY = "pk_test_..."` with your live public key `"pk_live_..."`.
+2. In Supabase Dashboard → Edge Functions → Secrets, update `PAYSTACK_SECRET_KEY` to your live secret key `"sk_live_..."`.
 
 ---
 

@@ -267,7 +267,7 @@ BEGIN
   v_total := v_subtotal + v_shipping;
 
   v_number := 'DD-' || to_char(NOW(), 'YYMMDD') || '-' ||
-              upper(substr(encode(gen_random_bytes(3), 'hex'), 1, 5));
+              upper(substr(md5(random()::text || clock_timestamp()::text), 1, 5));
 
   INSERT INTO public.dd_orders (
     order_number, user_id, customer_name, customer_email, customer_phone,
