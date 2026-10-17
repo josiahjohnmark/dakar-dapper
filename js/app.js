@@ -1041,30 +1041,33 @@ async function ensurePaystackLoaded() {
     return window.PaystackPop;
   }
 
-  // 1. Wait up to 2 seconds in case head script is downloading
-  for (let i = 0; i < 20; i++) {
+  // 1. Wait up to 1.5 seconds in case head script is downloading
+  for (let i = 0; i < 15; i++) {
     await new Promise(r => setTimeout(r, 100));
     if (window.PaystackPop && typeof window.PaystackPop.setup === "function") {
       return window.PaystackPop;
     }
   }
 
-  // 2. Try dynamically injecting the script tag
-  return new Promise(resolve => {
-    const s = document.createElement("script");
-    s.src = "https://js.paystack.co/v1/inline.js";
-    s.async = true;
-    s.onload = () => resolve(window.PaystackPop || null);
-    s.onerror = () => {
-      const alt = document.createElement("script");
-      alt.src = "https://inline-js.paystack.co/v1/inline.js";
-      alt.async = true;
-      alt.onload = () => resolve(window.PaystackPop || null);
-      alt.onerror = () => resolve(null);
-      document.head.appendChild(alt);
-    };
-    document.head.appendChild(s);
-  });
+  // 2. Try dynamically injecting the script tag with a 3-second hard timeout
+  return Promise.race([
+    new Promise(resolve => {
+      const s = document.createElement("script");
+      s.src = "https://js.paystack.co/v1/inline.js";
+      s.async = true;
+      s.onload = () => resolve(window.PaystackPop || null);
+      s.onerror = () => {
+        const alt = document.createElement("script");
+        alt.src = "https://inline-js.paystack.co/v1/inline.js";
+        alt.async = true;
+        alt.onload = () => resolve(window.PaystackPop || null);
+        alt.onerror = () => resolve(null);
+        document.head.appendChild(alt);
+      };
+      document.head.appendChild(s);
+    }),
+    new Promise(resolve => setTimeout(() => resolve(window.PaystackPop || null), 3000))
+  ]);
 }
 
 window.ensurePaystackLoaded = ensurePaystackLoaded;
@@ -1073,20 +1076,25 @@ async function startPaystackPayment(o, v) {
   const btn = document.getElementById("place-order-btn");
   if (btn) btn.textContent = "Opening Paystack...";
 
+  // Safety timer: re-enable button and alert if popup is blocked or takes >8s
+  let popupOpened = false;
+  const safetyTimer = setTimeout(() => {
+    if (!popupOpened) {
+      const b = document.getElementById("place-order-btn");
+      if (b && b.disabled) {
+        b.disabled = false;
+        refreshCheckoutTotals();
+        showToast("Paystack is taking long to connect. Check your connection or complete via WhatsApp.");
+      }
+    }
+  }, 8000);
+
   const pop = await ensurePaystackLoaded();
 
   if (pop && typeof pop.setup === "function") {
     const key = (typeof PAYSTACK_PUBLIC_KEY !== "undefined" && PAYSTACK_PUBLIC_KEY)
       ? PAYSTACK_PUBLIC_KEY
       : "pk_test_eab8efc4d8f79999a24ecb27271b7b1bc798de25";
-
-    const safetyTimer = setTimeout(() => {
-      const b = document.getElementById("place-order-btn");
-      if (b && b.disabled) {
-        b.disabled = false;
-        refreshCheckoutTotals();
-      }
-    }, 10000);
 
     try {
       const handler = pop.setup({
@@ -1124,6 +1132,7 @@ async function startPaystackPayment(o, v) {
         }
       });
 
+      popupOpened = true;
       handler.openIframe();
       return;
     } catch (err) {
@@ -1131,6 +1140,8 @@ async function startPaystackPayment(o, v) {
       console.error("Paystack setup error:", err);
     }
   }
+
+  clearTimeout(safetyTimer);
 
   // Fallback: If inline popup script was blocked by browser or ad blocker,
   // try direct hosted Paystack checkout via Edge Function
