@@ -495,25 +495,50 @@ function animateClothToBag(product, sourceEl, onArrival) {
 
   const dx = targetX - startX;
   const dy = targetY - startY;
+  const dist = Math.hypot(dx, dy);
 
-  // Arc control point: lift upward towards the top header
-  const lift = Math.max(25, Math.min(isMobile ? 70 : 120, Math.abs(dx) * 0.22));
-  const ctrlX = startX + dx * 0.42;
-  const ctrlY = Math.max(12, Math.min(startY, targetY) - lift);
+  // Ensure the trajectory ALWAYS has a prominent, non-linear, parabolic arc on all screen sizes:
+  // If the item and bag are close horizontally (e.g. mobile right column or single column),
+  // bow out gracefully towards the screen center so it never collapses into a straight line!
+  const midX = startX + dx * 0.45;
+  const midY = startY + dy * 0.45;
+
+  let bowX = 0;
+  if (Math.abs(dx) < (isMobile ? 160 : 300)) {
+    bowX = (startX > window.innerWidth * 0.5) ? (isMobile ? -65 : -110) : (isMobile ? 65 : 110);
+  }
+
+  const lift = Math.min(150, Math.max(isMobile ? 55 : 85, dist * 0.22));
+  const ctrlX = Math.max(25, Math.min(window.innerWidth - 25, midX + bowX));
+  const ctrlY = Math.max(10, Math.min(startY, targetY) - lift);
 
   const keyframes = [];
-  const steps = 24;
+  const steps = 28;
   for (let i = 0; i <= steps; i++) {
-    const t = i / steps;
+    const rawT = i / steps;
+    // Cubic ease-out baked directly into coordinates so ALL browsers/devices
+    // (Safari, iOS, Chrome, Android) produce the exact same silky, non-linear velocity curve:
+    const t = 1 - Math.pow(1 - rawT, 2.3);
+
     const mt = 1 - t;
     const curX = mt * mt * startX + 2 * mt * t * ctrlX + t * t * targetX;
     const curY = mt * mt * startY + 2 * mt * t * ctrlY + t * t * targetY;
-    const scale = 1 - Math.pow(t, 1.35) * 0.84;
-    const rot = Math.sin(t * Math.PI) * (dx >= 0 ? 8 : -8);
+
+    // Scale: starts with a subtle responsive pop (1.04), stays clear & recognizable, then smoothly shrinks
+    const scale = rawT < 0.25
+      ? 1 + rawT * 0.16
+      : 1.04 - Math.pow((rawT - 0.25) / 0.75, 1.4) * 0.90;
+
+    // Dynamic rotation: gently tilts in harmony with the curve
+    const tiltDir = (ctrlX - startX) >= 0 ? 8 : -8;
+    const rot = Math.sin(rawT * Math.PI) * tiltDir;
+
+    // Smoothly dissolve right as it enters the bag icon (last 16%)
     let opacity = 1;
-    if (t > 0.82) {
-      opacity = Math.max(0, (1 - t) / 0.18);
+    if (rawT > 0.84) {
+      opacity = Math.max(0, (1 - rawT) / 0.16);
     }
+
     keyframes.push({
       transform: `translate3d(${(curX - proxyW / 2).toFixed(1)}px, ${(curY - proxyH / 2).toFixed(1)}px, 0) scale(${scale.toFixed(3)}) rotate(${rot.toFixed(1)}deg)`,
       opacity: Number(opacity.toFixed(2))
@@ -523,6 +548,7 @@ function animateClothToBag(product, sourceEl, onArrival) {
   const flyer = document.createElement("div");
   flyer.className = "flying-cloth-proxy";
   flyer.setAttribute("aria-hidden", "true");
+  flyer.style.transform = `translate3d(${(startX - proxyW / 2).toFixed(1)}px, ${(startY - proxyH / 2).toFixed(1)}px, 0)`;
   const imgSrc = (targetImg && targetImg.src) || product.thumb || product.image || "";
   flyer.innerHTML = `<img src="${esc(imgSrc)}" alt="" draggable="false">`;
 
@@ -539,12 +565,11 @@ function animateClothToBag(product, sourceEl, onArrival) {
   if (flyer.animate) {
     try {
       const anim = flyer.animate(keyframes, {
-        duration: isMobile ? 600 : 660,
-        easing: "cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+        duration: isMobile ? 620 : 680,
         fill: "forwards"
       });
       anim.onfinish = finish;
-      setTimeout(finish, 750);
+      setTimeout(finish, 780);
     } catch (err) {
       finish();
     }
