@@ -207,11 +207,21 @@ ul{list-style:none}
 }
 .p-card-media img{
   width:100%;height:100%;object-fit:cover;object-position:center 15%;
-  transition:transform .5s var(--ease),opacity .4s;
+  transition:transform .5s var(--ease);
 }
-.p-card-media .img-hover{position:absolute;inset:0;opacity:0}
-.p-card:hover .p-card-media .img-main{opacity:0}
-.p-card:hover .p-card-media .img-hover{opacity:1;transform:scale(1.03)}
+.p-card:hover .p-card-media img{
+  transform:scale(1.06);
+}
+.p-card-media .img-hover{
+  position:absolute;inset:0;opacity:0;
+  transition:opacity .4s, transform .5s var(--ease);
+}
+.p-card:hover .p-card-media:has(.img-hover) .img-main{
+  opacity:0;
+}
+.p-card:hover .p-card-media .img-hover{
+  opacity:1;transform:scale(1.06);
+}
 
 /* Card badges */
 .p-badge{
