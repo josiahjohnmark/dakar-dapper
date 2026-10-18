@@ -673,7 +673,7 @@ async function payOrderFromAccount(ref) {
   const email = (ACC.user && ACC.user.email) || o.customer_email || "";
   const key = (typeof PAYSTACK_PUBLIC_KEY !== "undefined" && PAYSTACK_PUBLIC_KEY)
     ? PAYSTACK_PUBLIC_KEY
-    : "pk_test_eab8efc4d8f79999a24ecb27271b7b1bc798de25";
+    : "pk_live_3832e9c4c57a6d8017c5f9a9f1b3f53938471993";
 
   const handler = pop.setup({
     key: key,

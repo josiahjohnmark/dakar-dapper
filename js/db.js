@@ -11,8 +11,8 @@
 const SUPABASE_URL = "https://cqcyxiqsxcuqikvbkcrs.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNxY3l4aXFzeGN1cWlrdmJrY3JzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4NTY3NTIsImV4cCI6MjEwNTQzMjc1Mn0.pnnfzVRNvTAN_cvpEsSm5GhNhGMjNwudXlLPuJIyn54";
 
-// Paystack Public Key — replace with pk_live_... when switching to production
-const PAYSTACK_PUBLIC_KEY = "pk_test_eab8efc4d8f79999a24ecb27271b7b1bc798de25";
+// Paystack Public Key — Live production key
+const PAYSTACK_PUBLIC_KEY = "pk_live_3832e9c4c57a6d8017c5f9a9f1b3f53938471993";
 window.PAYSTACK_PUBLIC_KEY = PAYSTACK_PUBLIC_KEY;
 
 let supabaseClient = null;
