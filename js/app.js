@@ -96,7 +96,7 @@ function productCardHtml(p) {
       </button>
       <div class="p-actions">
         <button class="p-action-btn view" onclick="openProduct(${p.id})">Quick View</button>
-        <button class="p-action-btn add" onclick="${soldOut ? "" : `addToCart(${p.id})`}"${soldOut ? " disabled" : ""}>
+        <button class="p-action-btn add" onclick="${soldOut ? "" : `addToCart(${p.id}, null, null, null, this)`}"${soldOut ? " disabled" : ""}>
           ${soldOut ? "Sold Out" : "+ Bag"}
         </button>
       </div>
@@ -405,7 +405,155 @@ function closeAllDrawers() {
 }
 
 /* ── CART ───────────────────────────────────────────────────────────── */
-function addToCart(id, size, color, qty) {
+function updateCartBadge() {
+  const badge = document.getElementById("cart-count");
+  if (!badge) return;
+  const totalItems = cart.reduce((s, i) => s + i.qty, 0);
+  badge.textContent = totalItems;
+  badge.style.display = totalItems > 0 ? "flex" : "none";
+}
+
+function triggerCartBagPulse() {
+  const btn = document.getElementById("cart-toggle");
+  const badge = document.getElementById("cart-count");
+  if (!btn) return;
+  btn.classList.remove("bag-pulse");
+  void btn.offsetWidth;
+  btn.classList.add("bag-pulse");
+
+  if (badge) {
+    badge.classList.remove("badge-bump");
+    void badge.offsetWidth;
+    badge.classList.add("badge-bump");
+  }
+
+  if (typeof navigator !== "undefined" && navigator.vibrate) {
+    try { navigator.vibrate(20); } catch (e) {}
+  }
+}
+
+function animateClothToBag(product, sourceEl, onArrival) {
+  const bagBtn = document.getElementById("cart-toggle");
+  if (!bagBtn || !product) {
+    if (typeof onArrival === "function") onArrival();
+    return;
+  }
+
+  if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    if (typeof onArrival === "function") onArrival();
+    return;
+  }
+
+  const bagRect = bagBtn.getBoundingClientRect();
+  if (bagRect.width === 0 && bagRect.height === 0) {
+    if (typeof onArrival === "function") onArrival();
+    return;
+  }
+
+  // Find source image or element
+  let targetImg = null;
+  if (sourceEl instanceof HTMLElement) {
+    if (sourceEl.tagName === "IMG") {
+      targetImg = sourceEl;
+    } else {
+      targetImg = sourceEl.closest(".p-card, .quick-modal-content, .pdp-layout, .pdp-container, .wish-item")?.querySelector("img");
+    }
+  }
+  if (!targetImg) {
+    targetImg = document.querySelector(`.p-card[data-id="${product.id}"] img, #pdp-main-img, #modal-img`);
+  }
+
+  let startX = window.innerWidth / 2;
+  let startY = window.innerHeight / 2;
+
+  if (targetImg) {
+    const r = targetImg.getBoundingClientRect();
+    if (r.width > 0 && r.height > 0 && r.bottom > 0 && r.top < window.innerHeight) {
+      startX = r.left + r.width / 2;
+      startY = r.top + Math.min(r.height * 0.45, 140);
+    } else if (sourceEl instanceof HTMLElement) {
+      const br = sourceEl.getBoundingClientRect();
+      if (br.width > 0 && br.bottom > 0 && br.top < window.innerHeight) {
+        startX = br.left + br.width / 2;
+        startY = br.top + br.height / 2;
+      }
+    }
+  } else if (sourceEl instanceof HTMLElement) {
+    const br = sourceEl.getBoundingClientRect();
+    if (br.width > 0) {
+      startX = br.left + br.width / 2;
+      startY = br.top + br.height / 2;
+    }
+  }
+
+  const targetX = bagRect.left + bagRect.width / 2;
+  const targetY = bagRect.top + bagRect.height / 2;
+
+  const isMobile = window.innerWidth <= 480;
+  const proxyW = isMobile ? 62 : 74;
+  const proxyH = isMobile ? 78 : 92;
+
+  const dx = targetX - startX;
+  const dy = targetY - startY;
+
+  // Arc control point: lift upward towards the top header
+  const lift = Math.max(25, Math.min(isMobile ? 70 : 120, Math.abs(dx) * 0.22));
+  const ctrlX = startX + dx * 0.42;
+  const ctrlY = Math.max(12, Math.min(startY, targetY) - lift);
+
+  const keyframes = [];
+  const steps = 24;
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const mt = 1 - t;
+    const curX = mt * mt * startX + 2 * mt * t * ctrlX + t * t * targetX;
+    const curY = mt * mt * startY + 2 * mt * t * ctrlY + t * t * targetY;
+    const scale = 1 - Math.pow(t, 1.35) * 0.84;
+    const rot = Math.sin(t * Math.PI) * (dx >= 0 ? 8 : -8);
+    let opacity = 1;
+    if (t > 0.82) {
+      opacity = Math.max(0, (1 - t) / 0.18);
+    }
+    keyframes.push({
+      transform: `translate3d(${(curX - proxyW / 2).toFixed(1)}px, ${(curY - proxyH / 2).toFixed(1)}px, 0) scale(${scale.toFixed(3)}) rotate(${rot.toFixed(1)}deg)`,
+      opacity: Number(opacity.toFixed(2))
+    });
+  }
+
+  const flyer = document.createElement("div");
+  flyer.className = "flying-cloth-proxy";
+  flyer.setAttribute("aria-hidden", "true");
+  const imgSrc = (targetImg && targetImg.src) || product.thumb || product.image || "";
+  flyer.innerHTML = `<img src="${esc(imgSrc)}" alt="" draggable="false">`;
+
+  document.body.appendChild(flyer);
+
+  let finished = false;
+  const finish = () => {
+    if (finished) return;
+    finished = true;
+    try { flyer.remove(); } catch (e) {}
+    if (typeof onArrival === "function") onArrival();
+  };
+
+  if (flyer.animate) {
+    try {
+      const anim = flyer.animate(keyframes, {
+        duration: isMobile ? 600 : 660,
+        easing: "cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+        fill: "forwards"
+      });
+      anim.onfinish = finish;
+      setTimeout(finish, 750);
+    } catch (err) {
+      finish();
+    }
+  } else {
+    finish();
+  }
+}
+
+function addToCart(id, size, color, qty, sourceEl) {
   const p = PRODUCTS.find(x => x.id === id);
   if (!p) return;
   const isSoldOut = p.isOutOfStock || (p.stock !== undefined && p.stock <= 0);
@@ -420,7 +568,18 @@ function addToCart(id, size, color, qty) {
   if (existing) existing.qty += q;
   else cart.push({ id, size: s, color: c, qty: q });
   saveCart();
-  renderCart();
+
+  // If no sourceEl passed directly, check window.event
+  const resolvedSource = sourceEl || (typeof event !== "undefined" && event && event.target ? event.target : null);
+
+  // Animate the piece into the top bag icon
+  animateClothToBag(p, resolvedSource, () => {
+    updateCartBadge();
+    triggerCartBagPulse();
+  });
+
+  // Render cart drawer items immediately (badge updates on flight landing)
+  renderCart({ skipBadge: true });
   showToast(`${p.name} added to bag`);
 }
 
@@ -437,14 +596,15 @@ function updateQty(idx, delta) {
   renderCart();
 }
 
-function renderCart() {
+function renderCart(options = {}) {
   const container = document.getElementById("cart-items");
   const footer = document.getElementById("cart-footer");
   const badge = document.getElementById("cart-count");
-  if (!container || !footer || !badge) return;
-  const totalItems = cart.reduce((s, i) => s + i.qty, 0);
-  badge.textContent = totalItems;
-  badge.style.display = totalItems > 0 ? "flex" : "none";
+  if (!container || !footer) return;
+
+  if (!options.skipBadge && badge) {
+    updateCartBadge();
+  }
 
   if (!cart.length) {
     container.innerHTML = `<div class="empty-state"><h3>Your bag is empty</h3><p>Explore our collection and find something you love.</p><button class="btn btn-dark" onclick="closeAllDrawers();window.location.href='shop.html'">Browse Collection</button></div>`;
@@ -529,7 +689,7 @@ function renderWishlist() {
         <h4 onclick="closeAllDrawers();openProduct(${p.id})">${esc(p.name)}</h4>
         <div class="wish-item-price">${formatPrice(p.price)}</div>
         <div class="wish-item-actions">
-          <button class="btn btn-sm btn-dark" onclick="addToCart(${p.id});toggleWish(${p.id})">Add to Bag</button>
+          <button class="btn btn-sm btn-dark" onclick="addToCart(${p.id}, null, null, null, this);toggleWish(${p.id})">Add to Bag</button>
           <button class="wish-remove" onclick="toggleWish(${p.id})">Remove</button>
         </div>
       </div>
@@ -713,7 +873,8 @@ function addModalToCart() {
   const colorIdx = document.querySelector(".color-opt.active")?.dataset.index || 0;
   const color = currentModal.colorNames[colorIdx];
   const qty = parseInt(document.getElementById("modal-qty").textContent);
-  addToCart(currentModal.id, size, color, qty);
+  const sourceEl = document.getElementById("modal-img") || document.querySelector(".quick-modal-media img");
+  addToCart(currentModal.id, size, color, qty, sourceEl);
 }
 
 function refreshModalWish(id) {

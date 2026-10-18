@@ -2287,3 +2287,93 @@ ul{list-style:none}
 }
 .search-chips .search-tag:hover { border-color: var(--text); }
 .cat-grid:empty { display: none; }
+
+/* ── Fly to Bag Animation (Luxury & High-Fashion) ─────────────────── */
+.flying-cloth-proxy {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 74px;
+  height: 92px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #ffffff;
+  border: 1.5px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.22), 0 4px 14px rgba(184, 150, 90, 0.32);
+  pointer-events: none;
+  z-index: 999999;
+  will-change: transform, opacity;
+  transform-origin: center center;
+}
+.flying-cloth-proxy img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+@media (max-width: 480px) {
+  .flying-cloth-proxy {
+    width: 62px;
+    height: 78px;
+    border-radius: 10px;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.25), 0 3px 10px rgba(184, 150, 90, 0.35);
+  }
+}
+
+/* Luxury Bag Button Reaction */
+.btn-icon#cart-toggle {
+  position: relative;
+}
+
+.btn-icon#cart-toggle.bag-pulse svg {
+  animation: ddLuxuryBagReceive .55s cubic-bezier(0.25, 1.25, 0.5, 1) forwards;
+}
+
+@keyframes ddLuxuryBagReceive {
+  0% { transform: scale(1) rotate(0deg); }
+  25% { transform: scale(1.24) rotate(-6deg); color: var(--gold, #C5A46D); }
+  50% { transform: scale(0.92) rotate(3deg); }
+  75% { transform: scale(1.06) rotate(-1deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+
+/* Subtle Golden Ripple expanding from bag icon */
+.btn-icon#cart-toggle::after {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: 50%;
+  border: 2px solid var(--gold, #C5A46D);
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.6);
+}
+
+.btn-icon#cart-toggle.bag-pulse::after {
+  animation: ddLuxuryBagRipple .55s ease-out forwards;
+}
+
+@keyframes ddLuxuryBagRipple {
+  0% { transform: scale(0.6); opacity: 0.9; }
+  100% { transform: scale(1.65); opacity: 0; }
+}
+
+/* Cart count badge jump & gold flash */
+.badge-count.badge-bump {
+  animation: ddBadgeBump .45s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards !important;
+}
+
+@keyframes ddBadgeBump {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.45); background: var(--gold, #C5A46D) !important; color: #fff !important; }
+  100% { transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flying-cloth-proxy { display: none !important; }
+  .btn-icon#cart-toggle.bag-pulse svg { animation: none !important; }
+  .btn-icon#cart-toggle.bag-pulse::after { animation: none !important; }
+  .badge-count.badge-bump { animation: none !important; }
+}
+

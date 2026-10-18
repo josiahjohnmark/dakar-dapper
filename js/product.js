@@ -310,9 +310,31 @@ function bindPdp() {
 
 function pdpAddToCart(thenCheckout) {
   if (PDP.isOutOfStock || PDP.stock <= 0) return showToast("This piece is sold out.");
-  addToCart(PDP.id, pdpSize, (PDP.colorNames || [])[pdpColor], pdpQty);
-  if (thenCheckout) { closeAllDrawers(); openCheckout(); }
-  else openDrawer("cart-drawer");
+
+  const mainImg = document.getElementById("pdp-main-img") || document.querySelector(".pdp-gallery-main img");
+  const mainBtn = document.getElementById("pdp-add");
+  const buyBarBtn = document.getElementById("buy-bar-btn");
+  let sourceEl = mainImg;
+  if (mainImg) {
+    const r = mainImg.getBoundingClientRect();
+    if (r.bottom <= 60 || r.top >= window.innerHeight) {
+      if (buyBarBtn && !document.getElementById("buy-bar").hidden) {
+        sourceEl = buyBarBtn;
+      } else if (mainBtn) {
+        sourceEl = mainBtn;
+      }
+    }
+  } else {
+    sourceEl = mainBtn || buyBarBtn;
+  }
+
+  addToCart(PDP.id, pdpSize, (PDP.colorNames || [])[pdpColor], pdpQty, sourceEl);
+  if (thenCheckout) {
+    closeAllDrawers();
+    openCheckout();
+  } else {
+    setTimeout(() => openDrawer("cart-drawer"), 700);
+  }
 }
 
 async function sharePdp() {
