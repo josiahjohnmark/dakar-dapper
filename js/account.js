@@ -295,7 +295,7 @@ function orderCard(o, compact) {
         </ul>
         <dl class="acc-sums">
           <div><dt>Subtotal</dt><dd>${formatPrice(o.subtotal)}</dd></div>
-          <div><dt>Delivery</dt><dd>${Number(o.shipping) === 0 ? "Free" : formatPrice(o.shipping)}</dd></div>
+          <div><dt>Delivery</dt><dd>${Number(o.shipping) === 0 ? "Pay on delivery" : formatPrice(o.shipping)}</dd></div>
           <div class="total"><dt>Total</dt><dd>${formatPrice(o.total)}</dd></div>
         </dl>
         <div class="acc-order-actions">

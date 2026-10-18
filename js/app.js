@@ -822,9 +822,8 @@ function cartSubtotal() {
 }
 
 function shippingFor(state, subtotal) {
-  if (subtotal >= freeShipMin()) return 0;
-  const hit = shippingRates.find(r => r.state === state);
-  return hit ? Number(hit.fee) : 5000;
+  // Delivery fee is removed from online checkout and paid separately upon delivery to courier
+  return 0;
 }
 
 function openCheckout() {
@@ -899,9 +898,11 @@ function openCheckout() {
 
       <div class="checkout-summary">
         <div class="sum-row"><span>Subtotal</span><span id="co-subtotal">${formatPrice(subtotal)}</span></div>
-        <div class="sum-row"><span>Delivery</span><span id="co-shipping">&mdash;</span></div>
-        <div class="sum-row sum-total"><span>Total</span><span id="checkout-total">${formatPrice(subtotal)}</span></div>
-        <p class="sum-note">Your final total is confirmed by our server when you place the order.</p>
+        <div class="sum-row"><span>Delivery</span><span id="co-shipping">Pay upon delivery</span></div>
+        <div class="sum-row sum-total"><span>Total to Pay Online</span><span id="checkout-total">${formatPrice(subtotal)}</span></div>
+        <p class="sum-note" style="margin-top:6px;font-size:0.75rem;color:var(--text-sub);line-height:1.4;">
+          <strong>Delivery fee:</strong> Paid separately to the courier upon delivery (calculated based on your exact location).
+        </p>
       </div>
 
       <div class="checkout-error" id="checkout-error" role="alert" hidden></div>
@@ -940,7 +941,7 @@ function refreshCheckoutTotals() {
   const tEl = document.getElementById("checkout-total");
   const btn = document.getElementById("place-order-btn");
   if (sEl) sEl.textContent = formatPrice(subtotal);
-  if (hEl) hEl.textContent = ship === 0 ? "FREE" : formatPrice(ship);
+  if (hEl) hEl.textContent = (subtotal >= freeShipMin()) ? "FREE" : "Pay upon delivery";
   if (tEl) tEl.textContent = formatPrice(total);
 
   if (btn && !btn.disabled) {
@@ -1229,7 +1230,11 @@ async function placeOrderWhatsApp() {
 
 function showOrderPaidScreen(o, ref) {
   const waText = encodeURIComponent(
-    "Hello Dakar Dapper, I just paid for order " + o.order_number + " via Paystack (Ref: " + (ref || "") + "). Total: " + formatPrice(o.total) + ".");
+    "Hello Dakar Dapper, I just paid for order " + o.order_number + " via Paystack (Ref: " + (ref || "") + "). Items Total: " + formatPrice(o.total) + ".");
+
+  const shipDisplay = Number(o.shipping) === 0
+    ? (Number(o.subtotal) >= freeShipMin() ? "FREE" : "Pay upon delivery")
+    : formatPrice(o.shipping);
 
   document.getElementById("checkout-content").innerHTML = `
     <div class="order-done">
@@ -1238,11 +1243,11 @@ function showOrderPaidScreen(o, ref) {
       <p class="order-ref">Your reference<strong>${esc(o.order_number || "")}</strong></p>
       <div class="order-totals">
         <div class="sum-row"><span>Subtotal</span><span>${formatPrice(o.subtotal)}</span></div>
-        <div class="sum-row"><span>Delivery</span><span>${Number(o.shipping) === 0 ? "FREE" : formatPrice(o.shipping)}</span></div>
+        <div class="sum-row"><span>Delivery</span><span>${shipDisplay}</span></div>
         <div class="sum-row sum-total"><span>Total Paid</span><span style="color:#10B981;font-weight:700;">${formatPrice(o.total)}</span></div>
         ${ref ? `<div class="sum-row" style="font-size:0.75rem;color:var(--text-faint);margin-top:4px;"><span>Paystack Ref</span><span>${esc(ref)}</span></div>` : ""}
       </div>
-      <p class="order-next">Thank you! Your payment is confirmed and your items are secured. We will pack and dispatch your order promptly.</p>
+      <p class="order-next">Thank you! Your payment is confirmed and your items are secured. Delivery fee will be settled directly with the courier upon delivery.</p>
       <a class="btn btn-gold buy-full" href="https://wa.me/${esc(PHONE)}?text=${waText}" target="_blank" rel="noopener">Notify us on WhatsApp</a>
       <button class="btn btn-dark buy-full" onclick="handleOrderDoneContinue()" style="margin-top:10px">Continue Shopping</button>
     </div>`;
@@ -1253,7 +1258,11 @@ function showOrderPaidScreen(o, ref) {
 
 function showOrderUnpaidScreen(o, note) {
   const waText = encodeURIComponent(
-    "Hello Dakar Dapper, I placed order " + o.order_number + " and would like to complete payment. Total: " + formatPrice(o.total) + ".");
+    "Hello Dakar Dapper, I placed order " + o.order_number + " and would like to complete payment. Items Total: " + formatPrice(o.total) + ".");
+
+  const shipDisplay = Number(o.shipping) === 0
+    ? (Number(o.subtotal) >= freeShipMin() ? "FREE" : "Pay upon delivery")
+    : formatPrice(o.shipping);
 
   document.getElementById("checkout-content").innerHTML = `
     <div class="order-done">
@@ -1262,10 +1271,10 @@ function showOrderUnpaidScreen(o, note) {
       <p class="order-ref">Your reference<strong>${esc(o.order_number || "")}</strong></p>
       <div class="order-totals">
         <div class="sum-row"><span>Subtotal</span><span>${formatPrice(o.subtotal)}</span></div>
-        <div class="sum-row"><span>Delivery</span><span>${Number(o.shipping) === 0 ? "FREE" : formatPrice(o.shipping)}</span></div>
+        <div class="sum-row"><span>Delivery</span><span>${shipDisplay}</span></div>
         <div class="sum-row sum-total"><span>Total Due</span><span style="color:#F59E0B;font-weight:700;">${formatPrice(o.total)}</span></div>
       </div>
-      <p class="order-next">${esc(note || "Your order was reserved, but payment was not completed. You can retry paying online or complete via WhatsApp transfer.")}</p>
+      <p class="order-next">${esc(note || "Your order was reserved, but online payment was not completed. You can retry paying online or complete via WhatsApp transfer.")}</p>
       <button class="btn btn-gold buy-full" id="retry-pay-btn" style="margin-bottom:10px">Retry Paystack Payment</button>
       <a class="btn btn-outline buy-full" href="https://wa.me/${esc(PHONE)}?text=${waText}" target="_blank" rel="noopener">Pay via WhatsApp Transfer</a>
       <button class="btn btn-dark buy-full" onclick="handleOrderDoneContinue()" style="margin-top:10px">Continue Shopping</button>
@@ -1284,7 +1293,11 @@ function showOrderUnpaidScreen(o, note) {
 
 function showOrderWhatsAppScreen(o) {
   const waText = encodeURIComponent(
-    "Hello Dakar Dapper, I just placed order " + o.order_number + ". Total: " + formatPrice(o.total) + ".");
+    "Hello Dakar Dapper, I just placed order " + o.order_number + ". Items Total: " + formatPrice(o.total) + ". (Delivery fee to be settled upon delivery)");
+
+  const shipDisplay = Number(o.shipping) === 0
+    ? (Number(o.subtotal) >= freeShipMin() ? "FREE" : "Pay upon delivery")
+    : formatPrice(o.shipping);
 
   document.getElementById("checkout-content").innerHTML = `
     <div class="order-done">
@@ -1293,10 +1306,10 @@ function showOrderWhatsAppScreen(o) {
       <p class="order-ref">Your reference<strong>${esc(o.order_number || "")}</strong></p>
       <div class="order-totals">
         <div class="sum-row"><span>Subtotal</span><span>${formatPrice(o.subtotal)}</span></div>
-        <div class="sum-row"><span>Delivery</span><span>${Number(o.shipping) === 0 ? "FREE" : formatPrice(o.shipping)}</span></div>
+        <div class="sum-row"><span>Delivery</span><span>${shipDisplay}</span></div>
         <div class="sum-row sum-total"><span>Total</span><span>${formatPrice(o.total)}</span></div>
       </div>
-      <p class="order-next">Please save your reference. We will confirm delivery and payment with you on WhatsApp.</p>
+      <p class="order-next">Please save your reference. Delivery fee is settled upon delivery; we will confirm order details with you on WhatsApp.</p>
       <a class="btn btn-gold buy-full" href="https://wa.me/${esc(PHONE)}?text=${waText}" target="_blank" rel="noopener">Confirm on WhatsApp</a>
       <button class="btn btn-dark buy-full" onclick="handleOrderDoneContinue()" style="margin-top:10px">Continue Shopping</button>
     </div>`;

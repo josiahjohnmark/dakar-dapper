@@ -102,14 +102,9 @@ BEGIN
     FROM public.dd_content WHERE id = 'main';
   v_free_min := COALESCE(v_free_min, 150000);
 
-  IF v_subtotal >= v_free_min THEN
-    v_shipping := 0;
-  ELSE
-    SELECT fee INTO v_shipping FROM public.dd_shipping_rates WHERE state = v_state;
-    v_shipping := COALESCE(v_shipping, 5000);
-  END IF;
-
-  v_total := v_subtotal + v_shipping;
+  -- Delivery fee is 0 at online checkout; delivery fee is paid separately upon delivery
+  v_shipping := 0;
+  v_total := v_subtotal;
 
   -- Reliable random reference using standard Postgres MD5 (built-in, no extension needed)
   v_number := 'DD-' || to_char(NOW(), 'YYMMDD') || '-' ||
