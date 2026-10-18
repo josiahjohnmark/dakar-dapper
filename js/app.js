@@ -821,9 +821,9 @@ function cartSubtotal() {
   }, 0);
 }
 
-function shippingFor(state, subtotal) {
-  // Delivery fee is removed from online checkout and paid separately upon delivery to courier
-  return 0;
+function shippingFor(state) {
+  const hit = shippingRates.find(r => r.state === state);
+  return hit ? Number(hit.fee) : 5000;
 }
 
 function openCheckout() {
@@ -891,6 +891,28 @@ function openCheckout() {
         <input id="co-note" name="note" type="text" placeholder="Landmark, gate colour, best time to call">
       </div>
 
+      <div class="form-grp" style="margin-top:14px;margin-bottom:14px;">
+        <label style="font-weight:600;display:block;margin-bottom:8px;font-size:0.8rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-sub);">
+          Delivery Option
+        </label>
+        <div class="delivery-options-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <label class="delivery-opt-card" id="opt-card-no" style="border:1.5px solid var(--ink);border-radius:10px;padding:12px;cursor:pointer;display:flex;flex-direction:column;gap:4px;transition:all .2s;background:color-mix(in srgb, var(--ink) 4%, transparent);">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <input type="radio" name="co-delivery-option" value="no" id="del-opt-no" checked style="accent-color:var(--gold,#B8965A);cursor:pointer;">
+              <span style="font-size:0.86rem;font-weight:600;">No Delivery Fee</span>
+            </div>
+            <span style="font-size:0.75rem;color:var(--text-sub);padding-left:22px;">Pay courier on arrival</span>
+          </label>
+          <label class="delivery-opt-card" id="opt-card-yes" style="border:1.5px solid var(--border);border-radius:10px;padding:12px;cursor:pointer;display:flex;flex-direction:column;gap:4px;transition:all .2s;background:var(--surface);">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <input type="radio" name="co-delivery-option" value="yes" id="del-opt-yes" style="accent-color:var(--gold,#B8965A);cursor:pointer;">
+              <span style="font-size:0.86rem;font-weight:600;">Add Delivery Fee</span>
+            </div>
+            <span style="font-size:0.75rem;color:var(--text-sub);padding-left:22px;" id="co-del-opt-fee-label">Pay with order</span>
+          </label>
+        </div>
+      </div>
+
       <label class="optin">
         <input type="checkbox" id="co-marketing" name="marketing"${d.marketing ? " checked" : ""}>
         <span>Email me new arrivals and private offers. <small>Unsubscribe anytime.</small></span>
@@ -898,10 +920,13 @@ function openCheckout() {
 
       <div class="checkout-summary">
         <div class="sum-row"><span>Subtotal</span><span id="co-subtotal">${formatPrice(subtotal)}</span></div>
-        <div class="sum-row"><span>Delivery</span><span id="co-shipping">Pay upon delivery</span></div>
+        <div class="sum-row" id="co-shipping-row" style="display:none;">
+          <span>Delivery (<span id="co-shipping-state">Lagos</span>)</span>
+          <span id="co-shipping">+₦0</span>
+        </div>
         <div class="sum-row sum-total"><span>Total to Pay Online</span><span id="checkout-total">${formatPrice(subtotal)}</span></div>
-        <p class="sum-note" style="margin-top:6px;font-size:0.75rem;color:var(--text-sub);line-height:1.4;">
-          <strong>Delivery fee:</strong> Paid separately to the courier upon delivery (calculated based on your exact location).
+        <p class="sum-note" id="co-shipping-note" style="margin-top:6px;font-size:0.75rem;color:var(--text-sub);line-height:1.4;">
+          Delivery fee is not included in this payment. You will pay the courier upon delivery.
         </p>
       </div>
 
@@ -918,6 +943,9 @@ function openCheckout() {
 
   document.getElementById("checkout-form").addEventListener("submit", placeOrder);
   document.getElementById("co-state").addEventListener("change", refreshCheckoutTotals);
+  document.querySelectorAll('input[name="co-delivery-option"]').forEach(r => {
+    r.addEventListener("change", refreshCheckoutTotals);
+  });
 
   const altWaBtn = document.getElementById("co-alt-whatsapp-btn");
   if (altWaBtn) {
@@ -933,16 +961,58 @@ function openCheckout() {
 function refreshCheckoutTotals() {
   const stateEl = document.getElementById("co-state");
   if (!stateEl) return;
+  const state = stateEl.value || "Lagos";
   const subtotal = cartSubtotal();
-  const ship = shippingFor(stateEl.value, subtotal);
+  const stateShipFee = shippingFor(state);
+
+  const optYes = document.getElementById("del-opt-yes");
+  const addShip = !!(optYes && optYes.checked);
+  const ship = addShip ? stateShipFee : 0;
   const total = subtotal + ship;
+
+  // Highlight active option card
+  const cardNo = document.getElementById("opt-card-no");
+  const cardYes = document.getElementById("opt-card-yes");
+  if (cardNo && cardYes) {
+    if (addShip) {
+      cardYes.style.borderColor = "var(--ink)";
+      cardYes.style.background = "color-mix(in srgb, var(--ink) 4%, transparent)";
+      cardNo.style.borderColor = "var(--border)";
+      cardNo.style.background = "var(--surface)";
+    } else {
+      cardNo.style.borderColor = "var(--ink)";
+      cardNo.style.background = "color-mix(in srgb, var(--ink) 4%, transparent)";
+      cardYes.style.borderColor = "var(--border)";
+      cardYes.style.background = "var(--surface)";
+    }
+  }
+
+  // Update option label with state rate
+  const feeLabel = document.getElementById("co-del-opt-fee-label");
+  if (feeLabel) feeLabel.textContent = `+${formatPrice(stateShipFee)} (${state})`;
+
+  // Update summary rows
   const sEl = document.getElementById("co-subtotal");
+  const shipRow = document.getElementById("co-shipping-row");
+  const shipState = document.getElementById("co-shipping-state");
   const hEl = document.getElementById("co-shipping");
   const tEl = document.getElementById("checkout-total");
+  const noteEl = document.getElementById("co-shipping-note");
   const btn = document.getElementById("place-order-btn");
+
   if (sEl) sEl.textContent = formatPrice(subtotal);
-  if (hEl) hEl.textContent = (subtotal >= freeShipMin()) ? "FREE" : "Pay upon delivery";
+  if (shipRow) shipRow.style.display = addShip ? "flex" : "none";
+  if (shipState) shipState.textContent = state;
+  if (hEl) hEl.textContent = `+${formatPrice(ship)}`;
   if (tEl) tEl.textContent = formatPrice(total);
+
+  if (noteEl) {
+    if (addShip) {
+      noteEl.textContent = `Delivery fee (${formatPrice(stateShipFee)}) is included for ${state}. Your package will be delivered with no balance to pay on delivery.`;
+    } else {
+      noteEl.textContent = "Delivery fee is not included in this payment. You will pay the courier directly upon delivery.";
+    }
+  }
 
   if (btn && !btn.disabled) {
     btn.textContent = `Pay ${formatPrice(total)} with Paystack`;
@@ -1010,11 +1080,14 @@ async function placeOrder(e) {
   btn.disabled = true;
   btn.textContent = "Connecting to Paystack...";
 
+  const addDelivery = !!(document.getElementById("del-opt-yes") && document.getElementById("del-opt-yes").checked);
+
   const result = await dbPlaceOrder({
     name: v.firstName + " " + v.lastName,
     email: v.email, phone: v.phone, address: v.address,
     city: v.city, state: v.state, note: v.note,
     marketing: v.marketing,
+    add_delivery: addDelivery,
     items: cart
   });
 
@@ -1202,11 +1275,14 @@ async function placeOrderWhatsApp() {
   const btn = document.getElementById("place-order-btn");
   if (btn) { btn.disabled = true; btn.textContent = "Placing your order..."; }
 
+  const addDelivery = !!(document.getElementById("del-opt-yes") && document.getElementById("del-opt-yes").checked);
+
   const result = await dbPlaceOrder({
     name: v.firstName + " " + v.lastName,
     email: v.email, phone: v.phone, address: v.address,
     city: v.city, state: v.state, note: v.note,
     marketing: v.marketing,
+    add_delivery: addDelivery,
     items: cart
   });
 
@@ -1230,11 +1306,10 @@ async function placeOrderWhatsApp() {
 
 function showOrderPaidScreen(o, ref) {
   const waText = encodeURIComponent(
-    "Hello Dakar Dapper, I just paid for order " + o.order_number + " via Paystack (Ref: " + (ref || "") + "). Items Total: " + formatPrice(o.total) + ".");
+    "Hello Dakar Dapper, I just paid for order " + o.order_number + " via Paystack (Ref: " + (ref || "") + "). Total: " + formatPrice(o.total) + ".");
 
-  const shipDisplay = Number(o.shipping) === 0
-    ? (Number(o.subtotal) >= freeShipMin() ? "FREE" : "Pay upon delivery")
-    : formatPrice(o.shipping);
+  const hasShip = Number(o.shipping) > 0;
+  const shipDisplay = hasShip ? formatPrice(o.shipping) : "None (Pay on delivery)";
 
   document.getElementById("checkout-content").innerHTML = `
     <div class="order-done">
@@ -1247,7 +1322,7 @@ function showOrderPaidScreen(o, ref) {
         <div class="sum-row sum-total"><span>Total Paid</span><span style="color:#10B981;font-weight:700;">${formatPrice(o.total)}</span></div>
         ${ref ? `<div class="sum-row" style="font-size:0.75rem;color:var(--text-faint);margin-top:4px;"><span>Paystack Ref</span><span>${esc(ref)}</span></div>` : ""}
       </div>
-      <p class="order-next">Thank you! Your payment is confirmed and your items are secured. Delivery fee will be settled directly with the courier upon delivery.</p>
+      <p class="order-next">${hasShip ? "Thank you! Your payment is confirmed with delivery included. We will pack and dispatch your order promptly." : "Thank you! Your payment is confirmed and your items are secured. Delivery fee will be settled directly with the courier upon delivery."}</p>
       <a class="btn btn-gold buy-full" href="https://wa.me/${esc(PHONE)}?text=${waText}" target="_blank" rel="noopener">Notify us on WhatsApp</a>
       <button class="btn btn-dark buy-full" onclick="handleOrderDoneContinue()" style="margin-top:10px">Continue Shopping</button>
     </div>`;
@@ -1258,11 +1333,10 @@ function showOrderPaidScreen(o, ref) {
 
 function showOrderUnpaidScreen(o, note) {
   const waText = encodeURIComponent(
-    "Hello Dakar Dapper, I placed order " + o.order_number + " and would like to complete payment. Items Total: " + formatPrice(o.total) + ".");
+    "Hello Dakar Dapper, I placed order " + o.order_number + " and would like to complete payment. Total: " + formatPrice(o.total) + ".");
 
-  const shipDisplay = Number(o.shipping) === 0
-    ? (Number(o.subtotal) >= freeShipMin() ? "FREE" : "Pay upon delivery")
-    : formatPrice(o.shipping);
+  const hasShip = Number(o.shipping) > 0;
+  const shipDisplay = hasShip ? formatPrice(o.shipping) : "None (Pay on delivery)";
 
   document.getElementById("checkout-content").innerHTML = `
     <div class="order-done">
@@ -1293,11 +1367,10 @@ function showOrderUnpaidScreen(o, note) {
 
 function showOrderWhatsAppScreen(o) {
   const waText = encodeURIComponent(
-    "Hello Dakar Dapper, I just placed order " + o.order_number + ". Items Total: " + formatPrice(o.total) + ". (Delivery fee to be settled upon delivery)");
+    "Hello Dakar Dapper, I just placed order " + o.order_number + ". Total: " + formatPrice(o.total) + ".");
 
-  const shipDisplay = Number(o.shipping) === 0
-    ? (Number(o.subtotal) >= freeShipMin() ? "FREE" : "Pay upon delivery")
-    : formatPrice(o.shipping);
+  const hasShip = Number(o.shipping) > 0;
+  const shipDisplay = hasShip ? formatPrice(o.shipping) : "None (Pay on delivery)";
 
   document.getElementById("checkout-content").innerHTML = `
     <div class="order-done">
@@ -1309,7 +1382,7 @@ function showOrderWhatsAppScreen(o) {
         <div class="sum-row"><span>Delivery</span><span>${shipDisplay}</span></div>
         <div class="sum-row sum-total"><span>Total</span><span>${formatPrice(o.total)}</span></div>
       </div>
-      <p class="order-next">Please save your reference. Delivery fee is settled upon delivery; we will confirm order details with you on WhatsApp.</p>
+      <p class="order-next">${hasShip ? "Please save your reference. Delivery fee is included; we will confirm order details with you on WhatsApp." : "Please save your reference. Delivery fee is settled upon delivery; we will confirm order details with you on WhatsApp."}</p>
       <a class="btn btn-gold buy-full" href="https://wa.me/${esc(PHONE)}?text=${waText}" target="_blank" rel="noopener">Confirm on WhatsApp</a>
       <button class="btn btn-dark buy-full" onclick="handleOrderDoneContinue()" style="margin-top:10px">Continue Shopping</button>
     </div>`;

@@ -1469,30 +1469,131 @@ async function saveCms() {
 }
 
 function renderShippingForm() {
-  const c = A.content || {};
-  document.getElementById("shipping-form").innerHTML = `
-    <div class="a-field">
-      <label for="ship-free">Free delivery above (₦)</label>
-      <input class="a-input" id="ship-free" type="number" inputmode="numeric" min="0" value="${esc(c.freeShipMin || 150000)}">
-      <div class="hint">Orders at or above this total ship free, anywhere.</div>
-    </div>
-    <button class="a-btn a-btn-primary a-btn-full" id="save-ship">Save</button>
-    <div class="a-divider"></div>
-    <p style="font-size:.8rem;color:var(--a-text-3);line-height:1.6">
-      Per-state delivery fees are set in the database table
-      <strong>dd_shipping_rates</strong> (${A.shipping.length} states configured).
-      The server uses them to price every order.
-    </p>`;
+  const mount = document.getElementById("shipping-form");
+  if (!mount) return;
 
-  document.getElementById("save-ship").addEventListener("click", async () => {
-    const btn = document.getElementById("save-ship");
-    const val = Number(document.getElementById("ship-free").value) || 0;
-    btn.disabled = true; btn.textContent = "Saving…";
-    const res = await dbSaveContent({ ...(A.content || {}), freeShipMin: val });
-    btn.disabled = false; btn.textContent = "Save";
-    if (!res.ok) return toast("Could not save: " + res.message);
-    A.content = { ...(A.content || {}), freeShipMin: val };
-    toast("Delivery threshold saved");
+  const rates = [...(A.shipping || [])];
+  // Sort states alphabetically
+  rates.sort((a, b) => a.state.localeCompare(b.state));
+
+  mount.innerHTML = `
+    <div style="margin-bottom:12px;">
+      <p style="font-size:.84rem;color:var(--a-text-2);margin-bottom:14px;line-height:1.5;">
+        Configure per-state delivery fees below. At checkout, customers can select <strong>Add Delivery Fee</strong> to pay online, or choose <strong>No Delivery Fee</strong> to settle directly with the courier upon arrival.
+      </p>
+
+      <!-- Bulk Rate Setter -->
+      <div style="background:var(--a-surface-2);border:1px solid var(--a-border);border-radius:var(--a-r-sm);padding:14px;margin-bottom:18px;">
+        <label style="display:block;font-size:.74rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--a-text-2);margin-bottom:6px;">
+          Quick Bulk Update
+        </label>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+          <input class="a-input" id="ship-bulk-val" type="number" inputmode="numeric" placeholder="e.g. 3000" style="width:150px;min-height:40px;">
+          <button class="a-btn a-btn-ghost a-btn-sm" id="btn-ship-apply-all" type="button">Set all states to this fee</button>
+          <button class="a-btn a-btn-primary a-btn-sm" id="btn-ship-save-all" type="button">Save All Rates</button>
+        </div>
+        <div class="hint" style="font-size:.75rem;color:var(--a-text-3);margin-top:6px;">
+          Fills all state inputs below. Click &ldquo;Save All Rates&rdquo; to save directly to the database.
+        </div>
+      </div>
+
+      <!-- State search filter -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <span style="font-size:.82rem;font-weight:600;color:var(--a-text);">Configured States (${rates.length})</span>
+        <input class="a-input" id="ship-search" type="search" placeholder="Search state..." style="width:180px;min-height:36px;font-size:13px;padding:6px 10px;">
+      </div>
+
+      <!-- Scrollable rates list -->
+      <div id="ship-rates-list" style="max-height:440px;overflow-y:auto;border:1px solid var(--a-border);border-radius:var(--a-r-sm);background:var(--a-surface);">
+        ${rates.map(r => `
+          <div class="ship-rate-row" data-state="${esc(r.state)}" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--a-border);gap:12px;">
+            <span style="font-size:.88rem;font-weight:500;min-width:120px;">${esc(r.state)}</span>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-size:.85rem;color:var(--a-text-3);">₦</span>
+              <input class="a-input ship-fee-input" data-state="${esc(r.state)}" type="number" inputmode="numeric" value="${esc(r.fee)}" style="width:120px;min-height:38px;padding:6px 10px;text-align:right;">
+              <button class="a-btn a-btn-ghost a-btn-sm btn-save-single-rate" data-state="${esc(r.state)}" type="button" title="Save this state" style="min-height:38px;padding:6px 12px;">Save</button>
+            </div>
+          </div>
+        `).join("")}
+      </div>
+    </div>`;
+
+  // Search filter handler
+  const searchInput = document.getElementById("ship-search");
+  if (searchInput) {
+    searchInput.addEventListener("input", e => {
+      const q = e.target.value.toLowerCase().trim();
+      document.querySelectorAll(".ship-rate-row").forEach(row => {
+        const state = (row.dataset.state || "").toLowerCase();
+        row.style.display = state.includes(q) ? "flex" : "none";
+      });
+    });
+  }
+
+  // Bulk apply button
+  const bulkBtn = document.getElementById("btn-ship-apply-all");
+  if (bulkBtn) {
+    bulkBtn.addEventListener("click", () => {
+      const valStr = document.getElementById("ship-bulk-val").value;
+      const bulkVal = Number(valStr);
+      if (valStr.trim() === "" || isNaN(bulkVal) || bulkVal < 0) {
+        return toast("Please enter a valid delivery fee amount.");
+      }
+      document.querySelectorAll(".ship-fee-input").forEach(inp => {
+        inp.value = bulkVal;
+      });
+      toast(`Set all states to ₦${bulkVal.toLocaleString()}. Click 'Save All Rates' to apply.`);
+    });
+  }
+
+  // Save all button
+  const saveAllBtn = document.getElementById("btn-ship-save-all");
+  if (saveAllBtn) {
+    saveAllBtn.addEventListener("click", async () => {
+      saveAllBtn.disabled = true;
+      saveAllBtn.textContent = "Saving…";
+
+      const updatedRates = [];
+      document.querySelectorAll(".ship-fee-input").forEach(inp => {
+        const state = inp.dataset.state;
+        const fee = Math.max(0, Number(inp.value) || 0);
+        updatedRates.push({ state, fee });
+      });
+
+      const res = await dbSaveShippingRates(updatedRates);
+      saveAllBtn.disabled = false;
+      saveAllBtn.textContent = "Save All Rates";
+
+      if (!res.ok) {
+        return toast("Could not save delivery rates: " + res.message);
+      }
+      A.shipping = updatedRates;
+      toast(`Saved delivery rates for ${updatedRates.length} states`);
+    });
+  }
+
+  // Single save button per row
+  document.querySelectorAll(".btn-save-single-rate").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const state = btn.dataset.state;
+      const inp = document.querySelector(`.ship-fee-input[data-state="${state}"]`);
+      if (!inp) return;
+      const fee = Math.max(0, Number(inp.value) || 0);
+      btn.disabled = true;
+      btn.textContent = "…";
+
+      const res = await dbSaveShippingRate(state, fee);
+      btn.disabled = false;
+      btn.textContent = "Saved";
+      setTimeout(() => { btn.textContent = "Save"; }, 1800);
+
+      if (!res.ok) {
+        return toast(`Could not save ${state}: ` + res.message);
+      }
+      const existing = A.shipping.find(r => r.state === state);
+      if (existing) existing.fee = fee; else A.shipping.push({ state, fee });
+      toast(`${state} delivery fee updated to ₦${fee.toLocaleString()}`);
+    });
   });
 }
 

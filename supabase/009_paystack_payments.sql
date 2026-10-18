@@ -102,9 +102,18 @@ BEGIN
     FROM public.dd_content WHERE id = 'main';
   v_free_min := COALESCE(v_free_min, 150000);
 
-  -- Delivery fee is 0 at online checkout; delivery fee is paid separately upon delivery
-  v_shipping := 0;
-  v_total := v_subtotal;
+  -- Delivery option: check if customer selected to add delivery fee online
+  IF COALESCE((payload->>'add_delivery')::BOOLEAN, false) IS TRUE
+     OR (payload->>'delivery_choice') = 'paid_online' THEN
+    SELECT fee INTO v_shipping FROM public.dd_shipping_rates WHERE state = v_state;
+    v_shipping := COALESCE(v_shipping, 5000);
+    v_note := TRIM(COALESCE(v_note, '') || ' [Delivery: Paid online]');
+  ELSE
+    v_shipping := 0;
+    v_note := TRIM(COALESCE(v_note, '') || ' [Delivery: Pay upon delivery]');
+  END IF;
+
+  v_total := v_subtotal + v_shipping;
 
   -- Reliable random reference using standard Postgres MD5 (built-in, no extension needed)
   v_number := 'DD-' || to_char(NOW(), 'YYMMDD') || '-' ||

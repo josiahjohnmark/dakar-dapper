@@ -232,6 +232,38 @@ async function dbFetchShippingRates() {
   } catch { return []; }
 }
 
+async function dbSaveShippingRates(rates) {
+  if (!supabaseClient) return { ok: false, message: "Database not connected." };
+  try {
+    const { data, error } = await supabaseClient
+      .from("dd_shipping_rates")
+      .upsert(rates, { onConflict: "state" });
+    if (error) return { ok: false, message: error.message };
+    if (typeof dbLog === "function") {
+      dbLog("shipping.rates_update", "shipping", "all", { count: rates.length });
+    }
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, message: err.message };
+  }
+}
+
+async function dbSaveShippingRate(state, fee) {
+  if (!supabaseClient) return { ok: false, message: "Database not connected." };
+  try {
+    const { error } = await supabaseClient
+      .from("dd_shipping_rates")
+      .upsert({ state, fee: Number(fee) }, { onConflict: "state" });
+    if (error) return { ok: false, message: error.message };
+    if (typeof dbLog === "function") {
+      dbLog("shipping.rate_update", "shipping", state, { fee: Number(fee) });
+    }
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, message: err.message };
+  }
+}
+
 /* ══════════════════════════════════════════════════════════════════════
    CHECKOUT — totals are computed on the server, never here
    ══════════════════════════════════════════════════════════════════════ */
@@ -251,6 +283,8 @@ async function dbPlaceOrder(orderData) {
         state: orderData.state,
         note: orderData.note || "",
         marketing: !!orderData.marketing,
+        add_delivery: !!orderData.add_delivery,
+        delivery_choice: orderData.add_delivery ? "paid_online" : "pay_on_delivery",
         items: (orderData.items || []).map(i => ({
           id: i.id, qty: i.qty, size: i.size, color: i.color
         }))
