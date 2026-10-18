@@ -891,24 +891,30 @@ function openCheckout() {
         <input id="co-note" name="note" type="text" placeholder="Landmark, gate colour, best time to call">
       </div>
 
-      <div class="form-grp" style="margin-top:14px;margin-bottom:14px;">
-        <label style="font-weight:600;display:block;margin-bottom:8px;font-size:0.8rem;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-sub);">
-          Delivery Option
-        </label>
-        <div class="delivery-options-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-          <label class="delivery-opt-card" id="opt-card-no" style="border:1.5px solid var(--ink);border-radius:10px;padding:12px;cursor:pointer;display:flex;flex-direction:column;gap:4px;transition:all .2s;background:color-mix(in srgb, var(--ink) 4%, transparent);">
-            <div style="display:flex;align-items:center;gap:8px;">
-              <input type="radio" name="co-delivery-option" value="no" id="del-opt-no" checked style="accent-color:var(--gold,#B8965A);cursor:pointer;">
-              <span style="font-size:0.86rem;font-weight:600;">No Delivery Fee</span>
+      <div class="del-section">
+        <label class="del-section-title">Delivery Option</label>
+        <div class="del-options-list" role="radiogroup" aria-label="Delivery Option">
+          <label class="del-opt-card active" id="opt-card-no" for="del-opt-no">
+            <input type="radio" name="co-delivery-option" value="no" id="del-opt-no" checked>
+            <div class="del-opt-left">
+              <span class="del-radio-indicator" aria-hidden="true"></span>
+              <div class="del-opt-content">
+                <span class="del-opt-title">No Delivery Fee</span>
+                <span class="del-opt-sub">Pay delivery fee directly to courier on arrival</span>
+              </div>
             </div>
-            <span style="font-size:0.75rem;color:var(--text-sub);padding-left:22px;">Pay courier on arrival</span>
           </label>
-          <label class="delivery-opt-card" id="opt-card-yes" style="border:1.5px solid var(--border);border-radius:10px;padding:12px;cursor:pointer;display:flex;flex-direction:column;gap:4px;transition:all .2s;background:var(--surface);">
-            <div style="display:flex;align-items:center;gap:8px;">
-              <input type="radio" name="co-delivery-option" value="yes" id="del-opt-yes" style="accent-color:var(--gold,#B8965A);cursor:pointer;">
-              <span style="font-size:0.86rem;font-weight:600;">Add Delivery Fee</span>
+
+          <label class="del-opt-card" id="opt-card-yes" for="del-opt-yes">
+            <input type="radio" name="co-delivery-option" value="yes" id="del-opt-yes">
+            <div class="del-opt-left">
+              <span class="del-radio-indicator" aria-hidden="true"></span>
+              <div class="del-opt-content">
+                <span class="del-opt-title">Add Delivery Fee</span>
+                <span class="del-opt-sub" id="co-del-opt-sub">Direct delivery to ${esc(d.state || "Lagos")}</span>
+              </div>
             </div>
-            <span style="font-size:0.75rem;color:var(--text-sub);padding-left:22px;" id="co-del-opt-fee-label">Pay with order</span>
+            <span class="del-opt-pill" id="co-del-opt-pill">+${formatPrice(shippingFor(d.state || "Lagos"))}</span>
           </label>
         </div>
       </div>
@@ -926,7 +932,7 @@ function openCheckout() {
         </div>
         <div class="sum-row sum-total"><span>Total to Pay Online</span><span id="checkout-total">${formatPrice(subtotal)}</span></div>
         <p class="sum-note" id="co-shipping-note" style="margin-top:6px;font-size:0.75rem;color:var(--text-sub);line-height:1.4;">
-          Delivery fee is not included in this payment. You will pay the courier upon delivery.
+          Delivery fee is not charged online. You will pay the courier upon delivery.
         </p>
       </div>
 
@@ -946,6 +952,21 @@ function openCheckout() {
   document.querySelectorAll('input[name="co-delivery-option"]').forEach(r => {
     r.addEventListener("change", refreshCheckoutTotals);
   });
+
+  const cardNo = document.getElementById("opt-card-no");
+  const cardYes = document.getElementById("opt-card-yes");
+  if (cardNo) {
+    cardNo.addEventListener("click", () => {
+      const r = document.getElementById("del-opt-no");
+      if (r && !r.checked) { r.checked = true; refreshCheckoutTotals(); }
+    });
+  }
+  if (cardYes) {
+    cardYes.addEventListener("click", () => {
+      const r = document.getElementById("del-opt-yes");
+      if (r && !r.checked) { r.checked = true; refreshCheckoutTotals(); }
+    });
+  }
 
   const altWaBtn = document.getElementById("co-alt-whatsapp-btn");
   if (altWaBtn) {
@@ -970,26 +991,18 @@ function refreshCheckoutTotals() {
   const ship = addShip ? stateShipFee : 0;
   const total = subtotal + ship;
 
-  // Highlight active option card
+  // Toggle active class on cards
   const cardNo = document.getElementById("opt-card-no");
   const cardYes = document.getElementById("opt-card-yes");
-  if (cardNo && cardYes) {
-    if (addShip) {
-      cardYes.style.borderColor = "var(--ink)";
-      cardYes.style.background = "color-mix(in srgb, var(--ink) 4%, transparent)";
-      cardNo.style.borderColor = "var(--border)";
-      cardNo.style.background = "var(--surface)";
-    } else {
-      cardNo.style.borderColor = "var(--ink)";
-      cardNo.style.background = "color-mix(in srgb, var(--ink) 4%, transparent)";
-      cardYes.style.borderColor = "var(--border)";
-      cardYes.style.background = "var(--surface)";
-    }
-  }
+  if (cardNo) cardNo.classList.toggle("active", !addShip);
+  if (cardYes) cardYes.classList.toggle("active", addShip);
 
-  // Update option label with state rate
-  const feeLabel = document.getElementById("co-del-opt-fee-label");
-  if (feeLabel) feeLabel.textContent = `+${formatPrice(stateShipFee)} (${state})`;
+  // Update option subtext & pill with current state rate
+  const subEl = document.getElementById("co-del-opt-sub");
+  if (subEl) subEl.textContent = `Direct delivery to ${state}`;
+
+  const pillEl = document.getElementById("co-del-opt-pill");
+  if (pillEl) pillEl.textContent = `+${formatPrice(stateShipFee)}`;
 
   // Update summary rows
   const sEl = document.getElementById("co-subtotal");
@@ -1010,7 +1023,7 @@ function refreshCheckoutTotals() {
     if (addShip) {
       noteEl.textContent = `Delivery fee (${formatPrice(stateShipFee)}) is included for ${state}. Your package will be delivered with no balance to pay on delivery.`;
     } else {
-      noteEl.textContent = "Delivery fee is not included in this payment. You will pay the courier directly upon delivery.";
+      noteEl.textContent = "Delivery fee is not charged online. You will pay the courier directly upon delivery.";
     }
   }
 
