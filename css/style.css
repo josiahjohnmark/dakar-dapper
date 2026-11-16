@@ -1697,20 +1697,17 @@ ul{list-style:none}
   min-height: 50px;
   padding: 14px 38px;
   border-radius: var(--r-full);
-  border: 1px solid var(--border-dark);
-  background: transparent;
-  color: var(--text);
-  font-size: .78rem; font-weight: 700;
-  letter-spacing: .12em; text-transform: uppercase;
-  transition: all .2s;
+  border: none;
+  background: #1DA851;
+  color: #fff;
+  font-size: .82rem; font-weight: 800;
+  letter-spacing: .14em; text-transform: uppercase;
+  box-shadow: 0 6px 18px rgba(29,168,81,.35);
+  transition: background .2s, transform .15s, box-shadow .2s;
 }
-.load-more-btn:hover { background: var(--bg-dark); color: #fff; }
-.load-more-count {
-  display: block;
-  margin-top: 10px;
-  font-size: .78rem;
-  color: var(--text-faint);
-}
+.load-more-btn:hover { background: #178C43; box-shadow: 0 8px 22px rgba(29,168,81,.45); }
+.load-more-btn:active { transform: scale(.97); }
+.load-more-btn:focus-visible { outline: 3px solid rgba(29,168,81,.45); outline-offset: 3px; }
 
 /* ── Touch devices: quick-add without hiding the product ────────────────
    :hover never fires on a phone, so the quick actions would be unreachable.

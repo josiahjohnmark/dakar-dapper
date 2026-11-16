@@ -439,20 +439,18 @@ function renderPagination(totalPages, activePage) {
   const container = document.getElementById("shop-pagination");
   if (!container) return;
 
+  // No product counts here on purpose: shoppers read "of 89" as stock levels.
   const total = lastFilteredCount;
   const shown = Math.min(activePage * itemsPerPage, total);
 
   if (totalPages <= 1 || shown >= total) {
-    container.innerHTML = total > itemsPerPage
-      ? `<div class="load-more-wrap"><span class="load-more-count">Showing all ${total} products</span></div>`
-      : "";
+    container.innerHTML = "";
     return;
   }
 
   container.innerHTML = `
     <div class="load-more-wrap">
-      <button class="load-more-btn" onclick="loadMore()">Load more</button>
-      <span class="load-more-count">Showing ${shown} of ${total} products</span>
+      <button class="load-more-btn" onclick="loadMore()">Next</button>
     </div>`;
 }
 
