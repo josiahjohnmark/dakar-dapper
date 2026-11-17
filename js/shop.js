@@ -309,24 +309,16 @@ function renderShop(append) {
   const endIndex = Math.min(currentPage * itemsPerPage, totalItems);
   const pageItems = items.slice(0, endIndex);
 
-  // Update Page Title and Counter
+  // Update Page Title
   const foundCat = (typeof CATEGORIES !== "undefined") ? CATEGORIES.find(c => c.id === shopCategory) : null;
   const categoryTitle = shopCategory === "all" ? "All Products" : (shopCategory === "new" ? "New Arrivals" : (foundCat ? foundCat.name : shopCategory.charAt(0).toUpperCase() + shopCategory.slice(1)));
   const titleEl = document.getElementById("shop-page-title");
   const breadcrumbEl = document.getElementById("breadcrumb-current");
   const countEl = document.getElementById("shop-product-count");
+  if (countEl) countEl.remove();
 
   if (titleEl) titleEl.textContent = categoryTitle;
   if (breadcrumbEl) breadcrumbEl.textContent = categoryTitle;
-  if (countEl) {
-    if (totalItems === 0) {
-      countEl.textContent = "0 products found";
-    } else {
-      countEl.textContent = shopQuery
-        ? `${totalItems} result${totalItems !== 1 ? "s" : ""} for “${shopQuery}”`
-        : `${totalItems} product${totalItems !== 1 ? "s" : ""}`;
-    }
-  }
 
   // Render Active Filter Pills
   renderActiveFilters();
